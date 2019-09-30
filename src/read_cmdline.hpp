@@ -26,6 +26,7 @@ namespace SPF_NS
 {
 int read_cmdline_options(
       const std::vector<string>& args,
+      double& dt,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,

@@ -13,8 +13,8 @@
 int SPF_NS::read_phi_from_hdf5( 
       const hid_t inFile_id,
       std::vector<double>& phi, 
-      const std::vector<int>& idx_start, 
-      const std::vector<int>& idx_end,
+      const std::vector<size_t>& idx_start, 
+      const std::vector<size_t>& idx_end,
       //const std::vector<int>& periodicity,
       const int& mynode,
       const int& rootnode,
@@ -201,13 +201,13 @@ int SPF_NS::read_phi_from_hdf5(
 }
 
 int SPF_NS::determine_local_idxs(
-      const std::vector<int>& dims,
+      const std::vector<hsize_t>& dims,
       const int& mynode,
       const int& rootnode,
       const int& totalnodes,
       int& Nx_local,
-      std::vector<int>& idx_start,
-      std::vector<int>& idx_end
+      std::vector<size_t>& idx_start,
+      std::vector<size_t>& idx_end
       )
 {
    int ndims; ndims = dims.size();
@@ -264,7 +264,7 @@ int SPF_NS::determine_local_idxs(
 
 int SPF_NS::read_dims_from_hdf5( 
          const hid_t inFile_id,
-         std::vector<int>& dims,
+         std::vector<hsize_t>& dims,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,

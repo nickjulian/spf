@@ -26,8 +26,8 @@ namespace SPF_NS
    int read_phi_from_hdf5(
          const hid_t inFile_id,
          std::vector<double>& phi,
-         const std::vector<int>& idx_start, 
-         const std::vector<int>& idx_end,
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
          //const std::vector<int>& periodicity,
          const int& mynode,
          const int& rootnode,
@@ -37,7 +37,7 @@ namespace SPF_NS
 
    int read_dims_from_hdf5( // sets dims[i] = # elements in i^{th} dimension
          const hid_t inFile_id,
-         std::vector<int>& dims,
+         std::vector<hsize_t>& dims,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,
@@ -45,13 +45,13 @@ namespace SPF_NS
          );
 
    int determine_local_idxs(
-         const std::vector<int>& dims,
+         const std::vector<hsize_t>& dims,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,
          int& Nx_local,
-         std::vector<int>& x_start_idx,
-         std::vector<int>& x_end_idx
+         std::vector<size_t>& x_start_idx,
+         std::vector<size_t>& x_end_idx
          );
 
 } // SPF_NS

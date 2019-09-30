@@ -25,13 +25,31 @@ using std::cerr;
 
 namespace SPF_NS
 {
+   int append_phi_to_hdf5_multinode( 
+         // append a timestamped state to an hdf5 file
+         const hid_t outFile_id,
+         const int& time_step,
+         const double& time,
+         std::vector<double>& phi, 
+         const int& Nx_local,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
+         const hid_t dx_plist_id,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         MPI_Comm comm
+         );
+
    int write_phi_to_hdf5_multinode( 
+         // write a single state to the entire '/phi' dataset
          const hid_t outFile_id,
          std::vector<double>& phi, 
          const int& Nx_local,
-         const std::vector<int>& dims, // assume dims.size() == 3
-         const std::vector<int>& idx_start, 
-         const std::vector<int>& idx_end,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
          const hid_t dx_plist_id,
          const int& mynode,
          const int& rootnode,
@@ -44,9 +62,9 @@ namespace SPF_NS
          std::vector<double>& phi, 
          const double& time,
          const int& Nx_local,
-         const std::vector<int>& dims, // assume dims.size() == 3
-         const std::vector<int>& idx_start, 
-         const std::vector<int>& idx_end,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,

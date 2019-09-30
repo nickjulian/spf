@@ -1,0 +1,58 @@
+/* ----------------------------------------------------------------------
+    Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
+---------------------------------------------------------------------- */
+// File: readHDF5c.hpp
+// Purpose:
+
+#ifndef READHDF5C_HPP
+#define READHDF5C_HPP
+
+#include <iostream>
+#include <cstdlib>   // EXIT_SUCCESS & EXIT_FAILURE
+#include <string>
+#include <vector>
+#include <mpi.h>
+#include <hdf5.h>  
+
+#include "check_for_failure.hpp"
+
+using std::cout;
+using std::endl;
+using std::string;
+using std::cerr;
+
+namespace SPF_NS
+{
+   int read_phi_from_hdf5(
+         const hid_t inFile_id,
+         std::vector<double>& phi,
+         const std::vector<int>& idx_start, 
+         const std::vector<int>& idx_end,
+         //const std::vector<int>& periodicity,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         MPI_Comm comm
+         );
+
+   int read_dims_from_hdf5( // sets dims[i] = # elements in i^{th} dimension
+         const hid_t inFile_id,
+         std::vector<int>& dims,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         MPI_Comm comm
+         );
+
+   int determine_local_idxs(
+         const std::vector<int>& dims,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         int& Nx_local,
+         std::vector<int>& x_start_idx,
+         std::vector<int>& x_end_idx
+         );
+
+} // SPF_NS
+#endif

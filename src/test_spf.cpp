@@ -79,11 +79,12 @@ int main( int argc, char* argv[])
    // dimensional parameters
    std::vector<hsize_t> dims;
 
-   int Nx, Nx_local, Ny, Nz, Nt;
-   Nx = 1; Nx_local = 1; Ny = 1; Nz = 1;
+   int Nx_total, Nx_local, Ny, Nz, Nt;
+   Nx_total = 1; Nx_local = 1; Ny = 1; Nz = 1;
    int time_step; time_step = 0;
    double time, dt; time = 0; dt = 1;
-   Nt = 2; // TODO: erase this and read Nt from the cmdline
+   //Nt = 100; // TODO: erase this and read Nt from the cmdline
+   double diffusivityT; diffusivityT = 0.00001;
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -96,6 +97,7 @@ int main( int argc, char* argv[])
    if ( read_cmdline_options(
             args,
             dt,
+            Nt,
             output_prefix,
             inputFileName,
             mynode,
@@ -197,16 +199,19 @@ int main( int argc, char* argv[])
    
    if ( ndims == 1 ) 
    {
+      Nx_total = dims[0];
       Ny = 1;
       Nz = 1;
    }
    else if ( ndims == 2 ) 
    {
+      Nx_total = dims[0];
       Ny = dims[1];
       Nz = 1;
    }
    else if ( ndims == 3 ) 
    {
+      Nx_total = dims[0];
       Ny = dims[1];
       Nz = dims[2];
    }
@@ -450,17 +455,27 @@ int main( int argc, char* argv[])
             );
 
       /****************************************************************/
-      /* loop over voxels in phi_local, excluding ghosts **************/
+      /* loop over voxels in phi_local, skipping ghosts ***************/
 
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
             for ( size_t kk=0; kk < Nz; ++kk)
             {
-               flux_test(
-                     phi_local_change, 
-                     phi_local, 
-                     ii, jj, kk, Nx, Ny, Nz);
+               // heat equation
+               //  \frac{\partial T}{\partial t} = D_{T} \nabla^{2} T
+               //laplacian_flux(
+               //      phi_local_change, 
+               //      phi_local, 
+               //      diffusivityT,
+               //      ii, jj, kk, Nx_total, Ny, Nz);
+               
+               // jump process
+
+               //flux_test(
+               //      phi_local_change, 
+               //      phi_local, 
+               //      ii, jj, kk, Nx_total, Ny, Nz);
 
                /////////////////////////////////////////////////////////
                // TODO

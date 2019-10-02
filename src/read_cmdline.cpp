@@ -11,6 +11,7 @@
 int SPF_NS::read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
+      int& Nt,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -22,6 +23,7 @@ int SPF_NS::read_cmdline_options(
    bool flag_outprefix; flag_outprefix= false;
    bool flag_input_field; flag_input_field = false;
    bool flag_dt; flag_dt = false;
+   bool flag_Nt; flag_Nt = false;
    for ( size_t idx=1; idx < args.size(); idx++)
    {
       if ( args[idx] == "-o" )
@@ -44,6 +46,12 @@ int SPF_NS::read_cmdline_options(
             istringstream( args[idx + 1] ) >> dt;
             flag_dt = true;
          }
+      if ( args[idx] == "-Nt" )
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> Nt;
+            flag_Nt = true;
+         }
    }
    if ( !(flag_outprefix & flag_input_field ))
    {
@@ -55,9 +63,17 @@ int SPF_NS::read_cmdline_options(
    if ( !flag_dt )
    {
       if ( mynode == rootnode )
-         cout << "warning: time increment not specified, assigning dt = 1"
+         cout << "warning: time increment (-dt <#>) not specified,"
+           << " assigning dt = 1"
             << endl;
       dt = 1.0;
+   }
+   if ( !flag_Nt )
+   {
+      if ( mynode == rootnode )
+         cout << "Error: number of time steps (-Nt <#> ) not specified"
+            << endl;
+      return EXIT_FAILURE;
    }
    return EXIT_SUCCESS;
 } // read_cmdline_options()

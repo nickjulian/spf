@@ -20,6 +20,8 @@
 #include "writeHDF5c.hpp"
 #include "spf_communication.hpp"
 
+#include "voxel_fluxes.hpp"
+
 //#include "rand1D.hpp"
 //#include "jumps.hpp"
 //#include "rungekutta.hpp"
@@ -51,7 +53,7 @@ int main( int argc, char* argv[])
    hid_t fa_plist_id, dx_plist_id;
    // file access property list
    fa_plist_id = H5Pcreate( H5P_FILE_ACCESS );
-   H5Pset_fapl_mpio(fa_plist_id, world_comm, MPI_INFO_NULL);//info); // TODO: what's 'info' ?
+   H5Pset_fapl_mpio(fa_plist_id, world_comm, MPI_INFO_NULL);//info); 
    // dataset transfer property list
    dx_plist_id = H5Pcreate( H5P_DATASET_XFER );
    H5Pset_dxpl_mpio( dx_plist_id, H5FD_MPIO_COLLECTIVE);
@@ -60,7 +62,7 @@ int main( int argc, char* argv[])
    // In case it becomes useful to dedicate a group to a type of process:
    //MPI_Group world_group, worker_group;
    //int ranks[1];  // array of ranks
-   //MPI_Comm_group( world_comm, &world_group); extract from world its group
+   //MPI_Comm_group( world_comm, &world_group); extract world group
    //int server; 
    //server = totalnodes - 1; // identify the node to act as a server
    //// form a new group by excluding nodes specified by ranks
@@ -112,9 +114,10 @@ int main( int argc, char* argv[])
    ////////////////////////////////////////////////////////////////////
    // read input data
    hid_t inFile_id, outFile_id, phi_dataset_id, phi_dataspace_id;
+
    // open the file
    inFile_id = H5Fopen(inputFileName.c_str(), H5F_ACC_RDONLY, fa_plist_id);
-   //inFile_id = H5Fopen(inputFileName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+
    if (inFile_id < 0) failflag = -1;
    if ( check_for_failure( failflag, world_comm) )
    {
@@ -218,11 +221,11 @@ int main( int argc, char* argv[])
    int periodic; periodic = 1; // assume periodic boundary conditions
    std::vector<int> periodicity(ndims, periodic); // all identical for now
 
-   // TODO: read phi
-   std::vector<double> phi_local(dims[0] + 2, 0);
-   if ( ndims == 1 ) phi_local.resize(dims[0] + 2, 0);
-   if ( ndims == 2 ) phi_local.resize((dims[0] + 2)*dims[1], 0);
-   if ( ndims == 3 ) phi_local.resize((dims[0] + 2)*dims[1]*dims[2], 0);
+   std::vector<double> phi_local(Nx_local + 2, 0);
+   //if ( ndims == 1 ) phi_local.resize(Nx_local + 2, 0);
+   if ( ndims == 2 ) phi_local.resize((Nx_local + 2)*Ny, 0);
+   if ( ndims == 3 ) phi_local.resize((Nx_local + 2)*Ny*Nz, 0);
+
    if ( read_phi_from_hdf5( 
                         inFile_id,
                         phi_local, 
@@ -263,6 +266,14 @@ int main( int argc, char* argv[])
       }
       return EXIT_FAILURE;
    }
+   //size_t Nphi_local; Nphi_local = phi_local.size();
+   ////////////////////////////////////////////////////////////////////
+
+   ////////////////////////////////////////////////////////////////////
+   // instantiate containers of local field changes
+   //std::vector<double> phi_local_change(Nx_local*Ny*Nz,0);
+   std::vector<double> phi_local_change(phi_local.size(),0);
+   //std::vector<double> phi_local_change(Nphi_local,0);
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -300,9 +311,13 @@ int main( int argc, char* argv[])
    std::vector<double> phi_flux_from_above( Ny * Nz, 0);
    std::vector<double> phi_flux_from_below( Ny * Nz, 0);
 
+
    MPI_Request halo_recv_requests[2]; // two Isend per halo
    MPI_Request halo_send_requests[2]; // two Isend per halo
 
+   //size_t neigh_x_idx[2];
+   //size_t neigh_y_idx[2];
+   //size_t neigh_z_idx[2];
    ////////////////////////////////////////////////////////////////////
    
    ////////////////////////////////////////////////////////////////////
@@ -406,7 +421,7 @@ int main( int argc, char* argv[])
                      neighbors_comm
                      );
       
-      //cout << "node " << mynode << " local data after comms:" // debug
+      // cout << "node " << mynode << " local data after comms:" // debug
       //   << endl;//debug
       //for (size_t i=0; i < (Nx_local +2); ++i) // debug
       //{ // debug
@@ -414,7 +429,8 @@ int main( int argc, char* argv[])
       //   {
       //      cout << "node " << mynode << " ["; // debug
       //      for (size_t k=0; k < Nz; ++k) // debug
-      //         cout << setw(5) << phi_local[ k + Nz*(j + i*Ny) ];// debug
+      //         cout << setw(8) << setprecision(10) // debug
+      //          << phi_local[ k + Nz*(j + i*Ny) ]; // debug
       //      cout << "] " << endl; // debug
       //   }
       //   cout << endl; // debug
@@ -432,20 +448,51 @@ int main( int argc, char* argv[])
             neighbor_x_higher, neighbor_x_lower, 
             halo_recv_requests, neighbors_comm
             );
-      //////////////////////////////////////////////////////////////////
 
+      /****************************************************************/
+      /* loop over voxels in phi_local, excluding ghosts **************/
+
+      //size_t idx; // 
+      for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
+         for ( size_t jj=0; jj < Ny; ++jj)
+            for ( size_t kk=0; kk < Nz; ++kk)
+            {
+               flux_test(
+                     phi_local_change, 
+                     phi_local, 
+                     ii, jj, kk, Nx, Ny, Nz);
+
+               /////////////////////////////////////////////////////////
+               // TODO
+               // outward flux - Brownian motion
+               // outward flux - jump process
+               // non-conserved changes
+               /////////////////////////////////////////////////////////
+            }
+
+      /* end loop over voxels *****************************************/
+      /****************************************************************/
+      
       //////////////////////////////////////////////////////////////////
-      // evaluate outward flux to neighboring nodes
-      size_t iii; iii = 1;
-      size_t iiii; iiii = Nx_local;
+      // evaluate outward flux to neighboring nodes 
       for (size_t jj=0; jj < Ny; ++jj)
          for (size_t kk=0; kk < Nz; ++kk)
          {
             phi_flux_downward[kk + Nz*jj] 
-               = 0.01*phi_local[kk + Nz*(jj + Ny*iii)];
+               = phi_local_change[kk + Nz*(jj + Ny*(0))];
             phi_flux_upward[kk + Nz*jj] 
-               = 0.01*phi_local[kk + Nz*(jj + Ny*iiii)];
+               = phi_local_change[kk + Nz*(jj + Ny*(Nx_local+1))];
          }
+      //size_t iii; iii = 1;
+      //size_t iiii; iiii = Nx_local;
+      //for (size_t jj=0; jj < Ny; ++jj)
+      //   for (size_t kk=0; kk < Nz; ++kk)
+      //   {
+      //      phi_flux_downward[kk + Nz*jj] 
+      //         = 0.01*phi_local[kk + Nz*(jj + Ny*iii)];
+      //      phi_flux_upward[kk + Nz*jj] 
+      //         = 0.01*phi_local[kk + Nz*(jj + Ny*iiii)];
+      //   }
 
       //for (size_t jj=0; jj < Ny; ++jj) // debug
       //{ // debug
@@ -499,15 +546,11 @@ int main( int argc, char* argv[])
       //} // debug
       //////////////////////////////////////////////////////////////////
 
-      MPI_Waitall(2, halo_send_requests, MPI_STATUSES_IGNORE);
       MPI_Waitall(2, halo_recv_requests, MPI_STATUSES_IGNORE);
+      MPI_Waitall(2, halo_send_requests, MPI_STATUSES_IGNORE);
 
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values
-      // TODO
-      // std::vector<double> phi_flux_from_above( Ny * Nz, 0);
-      // std::vector<double> phi_flux_from_below( Ny * Nz, 0);
-      // phi_local[(dims[0] + 2)*dims[1]*dims[2]];
       //cout << "node " << mynode // debug
       // << " local data before adding neighbor flux:" // debug
       //   << endl;//debug
@@ -524,14 +567,52 @@ int main( int argc, char* argv[])
       //   cout << endl; // debug
       //} // debug
       //cout << endl;// debug
-      for ( size_t jj=0; jj < dims[1]; ++jj)
-         for ( size_t kk=0; kk < dims[2]; ++kk)
+      for (size_t jj=0; jj < Ny; ++jj)
+         for (size_t kk=0; kk < Nz; ++kk)
          {
-            phi_local[ kk + (dims[2])*(jj + Ny*( 1 ))]
-               += phi_flux_from_below[ kk + (dims[2])*jj ];
-            phi_local[ kk + (dims[2])*(jj + Ny*( Nx_local ))]
-               += phi_flux_from_above[ kk + (dims[2])*jj ];
+            phi_local_change[ kk + Nz*(jj + Ny*( 1 ))]
+               += phi_flux_from_below[ kk + Nz*jj ];
+            phi_local_change[ kk + Nz*(jj + Ny*( Nx_local ))]
+               += phi_flux_from_above[ kk + Nz*jj ];
          }
+      //// debug
+      //cout 
+      //   << "node " << mynode 
+      //   << " phi_local_change[i][j][] : [";
+      //   for (size_t ii=0; ii < Nx_local; ++ii)
+      //      for (size_t jj=0; jj < Ny; ++jj)
+      //      {
+      //         for (size_t kk=0; kk < Nz; ++kk)
+      //            cout << phi_local_change[kk + Nz*(jj + Ny*ii)] << ", ";
+      //         cout << "]" << endl;
+      //      }
+
+      //// end debug
+
+      // add field changes to the field and reset field changes to 0
+      //cout << "local data before adding change : " ;// debug
+            //cout << "node " << mynode << " ["; // debug
+               // cout << setw(10) << phi_local[ kk + Nz*(jj + Ny*(ii+1))]; // debug
+               //cout << " + " << setw(8) << phi_local_change[ kk + Nz*(jj + Ny*ii) ]; // debug
+               //cout << " =" << setw(10) << phi_local[ kk + Nz*(jj + Ny*(ii+1))]; // debug
+               //phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
+            //cout << "]" << endl; // debug
+      for (size_t ii=1; ii < Nx_local+1; ++ii)
+      {
+         for (size_t jj=0; jj < Ny; ++jj)
+         {
+            for (size_t kk=0; kk < Nz; ++kk)
+            {
+               phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
+                  += phi_local_change[ kk + Nz*(jj + Ny*ii) ];
+            }
+         }
+      }
+      for ( size_t ii=0; ii < Nx_local+2; ++ii)
+         for (size_t jj=0; jj < Ny; ++jj)
+            for (size_t kk=0; kk < Nz; ++kk)
+               phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
+
       //cout << "node " << mynode // debug
       // << " local data after adding neighbor flux:" // debug
       //   << endl;//debug
@@ -541,14 +622,13 @@ int main( int argc, char* argv[])
       //   {
       //      cout << "node " << mynode << " ["; // debug
       //      for (size_t k=0; k < Nz; ++k) // debug
-      //         cout << setw(5) << phi_local[ k + Nz*(j + i*Ny) ];// debug
+      //         cout << setw(9) << phi_local[ k + Nz*(j + i*Ny) ];// debug
       //      cout << "] " << endl; // debug
       //   }
       //   cout << endl; // debug
       //} // debug
       //cout << endl;// debug
       //////////////////////////////////////////////////////////////////
-
    }
    /*-----------------------------------------------------------------*/
    /* end loop over time ---------------------------------------------*/

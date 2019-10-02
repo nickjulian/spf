@@ -21,7 +21,7 @@ using std::endl;
 using std::string;
 using std::cerr;
 
-#define SPF_PI 3.1415926535897932384626433
+//#define SPF_PI 3.1415926535897932384626433
 
 namespace SPF_NS
 {

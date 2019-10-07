@@ -7,8 +7,8 @@ CXXFLAGS = -I$(ROOT)/include
 #LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/ -lnetcdf_c++
 #HLIBS		= -L/home/user/xfer-software/hdf5/hdf5-1.10.5/lib -lhdf5
 LIBS		= -lhdf5 -L$(ROOT)/lib -lm -lz -lsz -lmpi -ldl -L/usr/lib64 #$(HLIBS)
-OBJS		= read_cmdline.o readHDF5c.o writeHDF5c.o check_for_failure.o spf_communication.o voxel_fluxes.o #rand1D.o jumps.o rungekutta.o 
-SRCS		= ../src/read_cmdline.cpp ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp ../src/spf_communication.cpp ../src/voxel_fluxes.cpp #../src/rand1D.cpp ../src/jumps.cpp ../src/rungekutta.cpp
+OBJS		= read_cmdline.o readHDF5c.o writeHDF5c.o check_for_failure.o spf_communication.o voxel_dynamics.o #rand1D.o jumps.o rungekutta.o 
+SRCS		= ../src/read_cmdline.cpp ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp ../src/spf_communication.cpp ../src/voxel_dynamics.cpp #../src/rand1D.cpp ../src/jumps.cpp ../src/rungekutta.cpp
 #HSRCS		= ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp
 TARGET	= $(ROOT)/bin/test.x
 

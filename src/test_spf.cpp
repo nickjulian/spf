@@ -20,9 +20,9 @@
 #include "writeHDF5c.hpp"
 #include "spf_communication.hpp"
 
-#include "voxel_fluxes.hpp"
+#include "voxel_dynamics.hpp"
 
-//#include "rand1D.hpp"
+#include "rand.hpp"
 //#include "jumps.hpp"
 //#include "rungekutta.hpp"
 
@@ -83,8 +83,10 @@ int main( int argc, char* argv[])
    Nx_total = 1; Nx_local = 1; Ny = 1; Nz = 1;
    int time_step; time_step = 0;
    double time, dt; time = 0; dt = 1;
-   //Nt = 100; // TODO: erase this and read Nt from the cmdline
-   double diffusivityT; diffusivityT = 0.00001;
+
+   // TODO: erase this and read Nt from the cmdline
+   double diffusivityT; diffusivityT = 3.0E-4;
+
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -215,13 +217,6 @@ int main( int argc, char* argv[])
       Ny = dims[1];
       Nz = dims[2];
    }
-   //cout << "node " << mynode 
-   //   << ", Nx_local, Ny, Nz " << Nx_local << ", " << Ny << ", " << Nz
-   //   << ", idx_start[0] " << idx_start[0]
-   //   << ", idx_end[0] " << idx_end[0]
-   //   << endl; // debug
-
-   //idx_start[0] = x_start_idx;
 
    int periodic; periodic = 1; // assume periodic boundary conditions
    std::vector<int> periodicity(ndims, periodic); // all identical for now
@@ -243,7 +238,6 @@ int main( int argc, char* argv[])
       failflag = -1;
    }
 
-
    if ( check_for_failure( failflag, world_comm) )
    {
       H5Fclose( inFile_id );
@@ -261,12 +255,45 @@ int main( int argc, char* argv[])
    // close the HDF5 file
    H5Fclose( inFile_id );
 
+   // TODO: make voxel separation distance part of the input file
+   double hh_x; double hh_y; double hh_z;
+   hh_x = 1.0/(Nx_total ); 
+   //hh_x = (Nx_total +1); 
+   hh_y = 1.0/(Ny ); 
+   hh_z = 1.0/(Nz );
+
+   // TODO: make stability checks dynamic when diffusivity becomes variable
+   // For the dynamics to be stable, require
+   //  \delta t <= (h^2)/(2*D_{T}) on each independent axis.
+   if ( dt > hh_x*hh_x/(6.0*diffusivityT) ) failflag = -1;
    if ( check_for_failure( failflag, world_comm) )
    {
       MPI_Finalize();
       if ( mynode == rootnode )
       {
-         cout << "Error, failed to read input file: " << inputFileName
+         cout << "Error, discretization is unstable: dt > dx/(2 D_T)" << inputFileName
+            << endl;
+      }
+      return EXIT_FAILURE;
+   }
+   if ( dt > hh_y*hh_y/(6.0*diffusivityT) ) failflag = -1;
+   if ( check_for_failure( failflag, world_comm) )
+   {
+      MPI_Finalize();
+      if ( mynode == rootnode )
+      {
+         cout << "Error, discretization is unstable: dt > dy/(2 D_T)" << inputFileName
+            << endl;
+      }
+      return EXIT_FAILURE;
+   }
+   if ( dt > hh_z*hh_z/(6.0*diffusivityT) ) failflag = -1;
+   if ( check_for_failure( failflag, world_comm) )
+   {
+      MPI_Finalize();
+      if ( mynode == rootnode )
+      {
+         cout << "Error, discretization is unstable: dt > dz/(2 D_T)" << inputFileName
             << endl;
       }
       return EXIT_FAILURE;
@@ -315,14 +342,16 @@ int main( int argc, char* argv[])
    std::vector<double> phi_flux_downward( Ny * Nz, 0);
    std::vector<double> phi_flux_from_above( Ny * Nz, 0);
    std::vector<double> phi_flux_from_below( Ny * Nz, 0);
-
-
+   
    MPI_Request halo_recv_requests[2]; // two Isend per halo
    MPI_Request halo_send_requests[2]; // two Isend per halo
 
-   //size_t neigh_x_idx[2];
-   //size_t neigh_y_idx[2];
-   //size_t neigh_z_idx[2];
+   // TODO: see if the random class may be instantiated only once
+   SPF_NS::random rr( 0.01, dt);
+
+   //size_t neigh_idx_x[2];
+   //size_t neigh_idx_y[2];
+   //size_t neigh_idx_z[2];
    ////////////////////////////////////////////////////////////////////
    
    ////////////////////////////////////////////////////////////////////
@@ -457,20 +486,121 @@ int main( int argc, char* argv[])
       /****************************************************************/
       /* loop over voxels in phi_local, skipping ghosts ***************/
 
+      // Local field doesn't change until after evaluating flux for 
+      //  every voxel.
+      
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
             for ( size_t kk=0; kk < Nz; ++kk)
             {
-               // heat equation
-               //  \frac{\partial T}{\partial t} = D_{T} \nabla^{2} T
+               // indices wrt local_change
+               size_t idx; 
+               idx = kk + Nz*(jj + Ny*ii);
+               size_t neigh_idx_x_a;   //[2];
+               size_t neigh_idx_x_b;   //[2];
+               size_t neigh_idx_y_a;   //[2];
+               size_t neigh_idx_y_b;   //[2];
+               size_t neigh_idx_z_a;   //[2];
+               size_t neigh_idx_z_b;   //[2];
+               identify_local_neighbors(
+                     neigh_idx_x_a, 
+                     neigh_idx_x_b, 
+                     neigh_idx_y_a, 
+                     neigh_idx_y_b, 
+                     neigh_idx_z_a,
+                     neigh_idx_z_b,
+                     ii, jj, kk,
+                     //Nx_total, 
+                     Ny, Nz
+                     );
+
+               //conserved_gaussian_flux( 
+               //      phi_local_change,
+               //      phi_local,
+               //      rr,
+               //      1.0, // rate_scale_factor,
+               //      dt,
+               //      idx,
+               //      neigh_idx_x_a,
+               //      neigh_idx_x_b,
+               //      neigh_idx_y_a,
+               //      neigh_idx_y_b,
+               //      neigh_idx_z_a,
+               //      neigh_idx_z_b,
+               //      //Nx_total,
+               //      Ny,
+               //      Nz
+               //      );
+
+               conserved_jump_flux( 
+                     phi_local_change,
+                     phi_local,
+                     rr,
+                     1.0, // rate_scale_factor,
+                     dt,
+                     idx,
+                     neigh_idx_x_a,
+                     neigh_idx_x_b,
+                     neigh_idx_y_a,
+                     neigh_idx_y_b,
+                     neigh_idx_z_a,
+                     neigh_idx_z_b,
+                     //Nx_total,
+                     Ny,
+                     Nz
+                     );
+
+               //// heat equation
+               ////  \frac{\partial T}{\partial t} = D_{T} \nabla^{2} T
                //laplacian_flux(
                //      phi_local_change, 
                //      phi_local, 
+               //      hh_x, hh_y, hh_z,
+               //      dt,
                //      diffusivityT,
-               //      ii, jj, kk, Nx_total, Ny, Nz);
+               //      idx,
+               //      neigh_idx_x_a, 
+               //      neigh_idx_x_b, 
+               //      neigh_idx_y_a, 
+               //      neigh_idx_y_b, 
+               //      neigh_idx_z_a,
+               //      neigh_idx_z_b,
+               //      //ii, jj, kk, 
+               //      //Nx_total, 
+               //      Ny, Nz);
                
+               //if ( phi_local_change[idx] > 2.0 ) // debug
+               //   cout  // debug
+               //      << "hh_x " << hh_x << ", "
+               //      << "phi_local[ " << idx << "] " // debug
+               //      << phi_local[idx]  // debug
+               //      << ", phi_local_change[ " << idx << "] " // debug
+               //      << phi_local_change[idx]  // debug
+               //      << ", neighs "  // debug
+               //      << phi_local[neigh_idx_x_a] << ", " // debug
+               //      << phi_local[neigh_idx_x_b] << ", " // debug
+               //      << phi_local[neigh_idx_y_a] << ", " // debug
+               //      << phi_local[neigh_idx_y_b] << ", " // debug
+               //      << phi_local[neigh_idx_z_a] << ", " // debug
+               //      << phi_local[neigh_idx_z_b] << ", "
+               //      << "formula gives: "
+               //      << 
+               //      (
+               //       phi_local[neigh_idx_x_a]
+               //       +phi_local[neigh_idx_x_b]
+               //       -2*phi_local[idx]
+               //      )/(hh_x*hh_x)
+               //      << endl; // debug
+
                // jump process
+               //conserved_jump_flux(
+               //      phi_local_change, 
+               //      phi_local, 
+               //      scale_factor,
+               //      ii, jj, kk, 
+               //      //Nx_total, 
+               //      Ny, Nz);
 
                //flux_test(
                //      phi_local_change, 
@@ -561,9 +691,6 @@ int main( int argc, char* argv[])
       //} // debug
       //////////////////////////////////////////////////////////////////
 
-      MPI_Waitall(2, halo_recv_requests, MPI_STATUSES_IGNORE);
-      MPI_Waitall(2, halo_send_requests, MPI_STATUSES_IGNORE);
-
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values
       //cout << "node " << mynode // debug
@@ -582,6 +709,7 @@ int main( int argc, char* argv[])
       //   cout << endl; // debug
       //} // debug
       //cout << endl;// debug
+      MPI_Waitall(2, halo_recv_requests, MPI_STATUSES_IGNORE);
       for (size_t jj=0; jj < Ny; ++jj)
          for (size_t kk=0; kk < Nz; ++kk)
          {
@@ -612,6 +740,7 @@ int main( int argc, char* argv[])
                //cout << " =" << setw(10) << phi_local[ kk + Nz*(jj + Ny*(ii+1))]; // debug
                //phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
             //cout << "]" << endl; // debug
+
       for (size_t ii=1; ii < Nx_local+1; ++ii)
       {
          for (size_t jj=0; jj < Ny; ++jj)
@@ -623,10 +752,12 @@ int main( int argc, char* argv[])
             }
          }
       }
-      for ( size_t ii=0; ii < Nx_local+2; ++ii)
-         for (size_t jj=0; jj < Ny; ++jj)
-            for (size_t kk=0; kk < Nz; ++kk)
-               phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
+      //for ( size_t ii=0; ii < Nx_local+2; ++ii)
+      //   for (size_t jj=0; jj < Ny; ++jj)
+      //      for (size_t kk=0; kk < Nz; ++kk)
+      //         phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
+      for (std::vector<double>::iterator itr = phi_local_change.begin();
+            itr != phi_local_change.end(); ++itr) *itr = 0.0;
 
       //cout << "node " << mynode // debug
       // << " local data after adding neighbor flux:" // debug
@@ -644,6 +775,9 @@ int main( int argc, char* argv[])
       //} // debug
       //cout << endl;// debug
       //////////////////////////////////////////////////////////////////
+
+      MPI_Waitall(2, halo_send_requests, MPI_STATUSES_IGNORE);
+
    }
    /*-----------------------------------------------------------------*/
    /* end loop over time ---------------------------------------------*/

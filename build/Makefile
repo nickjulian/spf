@@ -27,6 +27,7 @@ TARGET	= $(ROOT)/bin/test.x
 
 spf: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
+	$(CXX) $(ROOT)/src/spf_pure_poisson.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson.x
 
 #$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
 

@@ -6,7 +6,7 @@
 #ifndef READ_CMDLINE_HPP
 #define READ_CMDLINE_HPP
 
-#define PRINT_USAGE cout << "Usage: " << argv[0] << " <OPTIONS>" << endl << "OPTIONS : " << endl << "   -i <input field hdf5 file>" << endl << "   -o <output file prefix>" << endl << "   -Nt <number of time steps>" << endl << "   [-dt <time increment>]" << endl;
+#define PRINT_USAGE cout << "Usage: " << argv[0] << " <OPTIONS>" << endl << "OPTIONS : " << endl << "   -i <input field hdf5 file>" << endl << "   -o <output file prefix>" << endl << "   -Nt <number of time steps>" << endl << "   [-dt <time increment>]" << endl << "   [-r <rate scale factor>]" << endl << "   [-wp <steps between file writes>]" << endl << "   [-stat]"<< endl;
 
 #include <mpi.h>
 #include <iostream>  // cout, cin, cerr, endl
@@ -28,6 +28,9 @@ int read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
+      double& rate_scale_factor,
+      int& write_period,
+      bool& flag_calcstat,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,

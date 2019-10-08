@@ -12,6 +12,9 @@ int SPF_NS::read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
+      double& rate_scale_factor,
+      int& write_period,
+      bool& flag_calcstat,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -24,6 +27,9 @@ int SPF_NS::read_cmdline_options(
    bool flag_input_field; flag_input_field = false;
    bool flag_dt; flag_dt = false;
    bool flag_Nt; flag_Nt = false;
+   bool flag_r; flag_r = false;
+   bool flag_wp; flag_wp = false;
+
    for ( size_t idx=1; idx < args.size(); idx++)
    {
       if ( args[idx] == "-o" )
@@ -52,6 +58,19 @@ int SPF_NS::read_cmdline_options(
             istringstream( args[idx + 1] ) >> Nt;
             flag_Nt = true;
          }
+      if ( args[idx] == "-r" )
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> rate_scale_factor;
+            flag_r = true;
+         }
+      if ( args[idx] == "-wp" )
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> write_period;
+            flag_wp = true;
+         }
+      if ( args[idx] == "-stat" ) flag_calcstat= true;
    }
    if ( !(flag_outprefix & flag_input_field ))
    {

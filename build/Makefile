@@ -26,9 +26,9 @@ TARGET	= $(ROOT)/bin/test.x
 #	$(CXX) $(ROOT)/src/test_marcus_drift.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus_drift.x
 
 spf: $(OBJS) #$(HOBJS)
-	$(CXX) $(ROOT)/src/test_spf.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/test_spf.x
+	$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
 
-#$(CXX) $(ROOT)/src/test_spf.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_spf.x
+#$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
 
 $(OBJS):
 	$(CXX) -g -c $(CXXFLAGS) $(LIBS) $(SRCS)

@@ -10,6 +10,7 @@
 #include <cstdlib>   // EXIT_SUCCESS, EXIT_FAILURE
 #include <vector>
 #include <iostream> // cout, cin, cerr, endl
+#include <algorithm> // sort
 
 #include "rand.hpp"
 

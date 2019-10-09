@@ -63,7 +63,8 @@ int SPF_NS::conserved_gaussian_flux(
       //exiting_current_voxel = round(abs(0.5* gd( rr.generator )));
       double jump; jump = gd( rr.generator );
       if ( jump < 0 ) jump =0;
-      exiting_current_voxel = round( jump );
+      // exiting_current_voxel = round( jump );
+      exiting_current_voxel = jump;
 
       //std::list<int> dest_idx_randomized;
       if ( exiting_current_voxel >= local_field[idx] )
@@ -73,13 +74,35 @@ int SPF_NS::conserved_gaussian_flux(
 
       if ( exiting_current_voxel > 0) 
       {
-         for (int ii=0; ii < exiting_current_voxel; ++ii)
+         //for (int ii=0; ii < exiting_current_voxel; ++ii)
+         //{
+         //   // choose which neighbor to send this walker to
+         //   std::uniform_int_distribution<int> ud(0,5);
+         //   dest_idx = ud( rr.generator );
+         //   jump_magnitudes[dest_idx] += 1.0;
+         //}
+         
+         // choose how to distribute the flux among neighbors
+         std::vector<double> random_points;
+         std::uniform_real_distribution<double> ud(0,1);
+         for ( size_t ii=0; ii < 5; ++ii)
          {
-            // choose which neighbor to send this walker to
-            std::uniform_int_distribution<int> ud(0,5);
-            dest_idx = ud( rr.generator );
-            jump_magnitudes[dest_idx] += 1.0;
+            random_points.push_back( ud( rr.generator ) );
          }
+
+         std::sort( random_points.begin(), random_points.end() );
+
+         jump_magnitudes[0] = exiting_current_voxel*random_points[0] ;
+         jump_magnitudes[1] = exiting_current_voxel
+                                 *(random_points[1] - random_points[0]);
+         jump_magnitudes[2] = exiting_current_voxel
+                                 *(random_points[2] - random_points[1]);
+         jump_magnitudes[3] = exiting_current_voxel
+                                 *(random_points[3] - random_points[2]);
+         jump_magnitudes[4] = exiting_current_voxel
+                                 *(random_points[4] - random_points[3]);
+         jump_magnitudes[5] = exiting_current_voxel
+                                 *(1.0 - random_points[4]);
       }
       else 
          if ( exiting_current_voxel < 0 )

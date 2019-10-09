@@ -2,7 +2,7 @@ ROOT 		= ..
 CXX  		= mpicxx
 #CXX  		= cxx
 #HCXX  	= h5cc
-CXXFLAGS = -I$(ROOT)/include
+CXXFLAGS = -I$(ROOT)/include #-std=c++11
 #LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/
 #LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/ -lnetcdf_c++
 #HLIBS		= -L/home/user/xfer-software/hdf5/hdf5-1.10.5/lib -lhdf5

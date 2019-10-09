@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cstdlib>   // EXIT_SUCCESS & EXIT_FAILURE
 #include <string>
+#include <sstream>   // ostringstream
 #include <vector>
 #include <mpi.h>
 #include "../include/hdf5.h"

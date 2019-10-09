@@ -12,6 +12,7 @@
 #include <iostream>  // cout, cin, cerr, endl
 #include <iomanip>   // setw, setprecision
 //#include <fstream>   // ifstream, ofstream
+#include <sstream>   // ostringstream
 #include <cstdlib>   // EXIT_SUCCESS, EXIT_FAILURE
 #include <vector>
 #include <string>

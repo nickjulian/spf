@@ -47,7 +47,12 @@ int SPF_NS::append_phi_to_hdf5_multinode(
    std::string datasetName;
    std::string attributeName( "Time" );
    hsize_t attribute_dims[1]; attribute_dims[0] = 1;
-   groupName += std::to_string(time_step);
+   
+   // convert time_step from into to string
+   std::ostringstream sstime_step;
+   sstime_step << time_step;
+   groupName = "Step#" + sstime_step.str();
+
    datasetName = "/" + groupName + "/phi";
    
    group_id = H5Gcreate2( outFile_id,
@@ -439,7 +444,11 @@ int SPF_NS::append_phi_to_hdf5_singlenode(
    std::string datasetName;
    std::string attributeName( "Time" );
    hsize_t attribute_dims[1]; attribute_dims[0] = 1;// attributes: Time
-   groupName += std::to_string(time_step);
+
+   // convert time_step from into to string
+   std::ostringstream sstime_step;
+   sstime_step << time_step;
+   groupName = "Step#" + sstime_step.str();
    datasetName = "/" + groupName + "/" + field_name;
    
    group_id = H5Gcreate2( outFile_id,

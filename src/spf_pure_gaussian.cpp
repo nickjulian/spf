@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
     Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
 ---------------------------------------------------------------------- */
-// File: test_spf.cpp
+// File: spf_pure_gaussian.cpp
 
 #include <iostream>  // cout, cin, cerr, endl
 #include <iomanip>   // setw, setprecision
@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <math.h> // floor
+#include <time.h> // time_t, time, ctime
 
 #include <mpi.h>
 #include "../include/hdf5.h"
@@ -305,6 +306,39 @@ int main( int argc, char* argv[])
       return EXIT_FAILURE;
    }
    //size_t Nphi_local; Nphi_local = phi_local.size();
+   ////////////////////////////////////////////////////////////////////
+
+   ////////////////////////////////////////////////////////////////////
+   // write run parameters to a text file
+   ofstream log_file;
+   if ( mynode == rootnode )
+   {
+      cout << "Saving run parameters to file: " << output_prefix + ".log" 
+        << endl; // debug 
+      log_file.open(output_prefix + ".log", 
+                        ios::app | ios::ate);
+
+      if ( ! log_file.good() )
+      {
+         cout << "warning: could not open log file: "
+            << output_prefix + ".log"
+            << endl;
+         log_file.close();
+      }
+      time_t start_time;
+      std::time(&start_time);
+      log_file << "Start " << std::ctime(&start_time) << endl;
+      log_file << "-o " << output_prefix << endl;
+      log_file << "-i " << inputFileName << endl;
+      log_file << "-Nt " << Nt << endl;
+      log_file << "-dt " << dt << endl;
+      log_file << "-r " << rate_scale_factor << endl;
+      log_file << "-wp " << write_period << endl;
+      log_file << endl;
+      if ( flag_calcstat ) log_file << "-stat " << endl;
+      //log_file << endl;
+      log_file.close();
+   }
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -878,6 +912,28 @@ int main( int argc, char* argv[])
 
    if ( (mynode == rootnode) && stat_file.is_open()) stat_file.close();
    H5Fclose( outFile_id );
+
+   ////////////////////////////////////////////////////////////////////
+   // write time to a log file
+   if ( mynode == rootnode )
+   {
+      log_file.open(output_prefix + ".log", 
+                        ios::app | ios::ate);
+
+      if ( ! log_file.good() )
+      {
+         cout << "warning: could not open log file: "
+            << output_prefix + ".log"
+            << endl;
+         log_file.close();
+      }
+      time_t end_time;
+      std::time(&end_time);
+      log_file << "End " << std::ctime(&end_time) << endl;
+      //log_file << endl;
+      log_file.close();
+   }
+   ////////////////////////////////////////////////////////////////////
    
    ////////////////////////////////////////////////////////////////////
    MPI_Comm_free( &neighbors_comm); 

@@ -30,7 +30,7 @@ namespace SPF_NS
          const hid_t outFile_id,
          const int& time_step,
          const double& time,
-         std::vector<double>& phi, 
+         const std::vector<double>& phi, 
          const int& Nx_local,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
          const std::vector<size_t>& idx_start, 
@@ -45,7 +45,7 @@ namespace SPF_NS
    int write_phi_to_hdf5_multinode( 
          // write a single state to the entire '/phi' dataset
          const hid_t outFile_id,
-         std::vector<double>& phi, 
+         const std::vector<double>& phi, 
          const int& Nx_local,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
          const std::vector<size_t>& idx_start, 
@@ -57,18 +57,13 @@ namespace SPF_NS
          MPI_Comm comm
          );
 
-   int append_phi_to_hdf5( 
+   int append_phi_to_hdf5_singlenode( 
          const hid_t outFile_id,
-         std::vector<double>& phi, 
+         const int& time_step,
          const double& time,
-         const int& Nx_local,
+         const std::string& field_name,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
-         const std::vector<size_t>& idx_start, 
-         const std::vector<size_t>& idx_end,
-         const int& mynode,
-         const int& rootnode,
-         const int& totalnodes,
-         MPI_Comm comm
+         const std::vector<double>& phi
          );
 
    int output_vector_to_hdf5(

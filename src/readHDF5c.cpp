@@ -325,4 +325,112 @@ int SPF_NS::read_dims_from_hdf5(
    H5Dclose( phi_dataset_id );
    return EXIT_SUCCESS;
 }
+
+int SPF_NS::read_phi_from_hdf5_singlenode( 
+      const hid_t inFile_id,
+      const string& group_name,
+      int& Nx, int& Ny, int& Nz,
+      std::vector<double>& phi
+      //const std::vector<int>& periodicity,
+      )
+{
+   //int failflag; failflag = 0;
+   hid_t phi_dataset_id, phi_dataspace_id, group_id;
+   herr_t status; status = 0;
+   hssize_t N_total;
+   // open the hdf5 file
+   group_id = H5Gopen2(inFile_id, group_name.c_str(), H5P_DEFAULT);
+   phi_dataset_id = H5Dopen2(group_id, "phi", H5P_DEFAULT);
+   phi_dataspace_id = H5Dget_space( phi_dataset_id );
+
+   // reacquire spatial dimensions from the input data
+   int ndims;
+   ndims = H5Sget_simple_extent_ndims( phi_dataspace_id );
+
+   hsize_t dims[ndims];
+   H5Sget_simple_extent_dims( phi_dataspace_id, dims, NULL);
+
+   hsize_t stride[ndims];
+   for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+
+   hsize_t count[ndims];
+   for ( size_t ii=0; ii < ndims; ++ii ) 
+      count[ii] = dims[ii];
+      //count[ii] = idx_end[ii] - idx_start[ii] + 1;
+
+   hsize_t block[ndims];
+   for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+   
+   int total_number_of_elements;
+   if ( ndims == 1 ) total_number_of_elements = dims[0];
+   else if ( ndims == 2 ) total_number_of_elements = dims[0] * dims[1];
+   else if ( ndims == 3 ) 
+      total_number_of_elements = dims[0] * dims[1] * dims[2];
+
+   // resize the local data container to fit the input
+   if ( phi.size() != total_number_of_elements )
+   {
+      cout << "resizing phi since phi.size() " << phi.size();
+      if (ndims == 3)
+      {
+         Nx = dims[0];
+         Ny = dims[1];
+         Nz = dims[2];
+         cout << phi.size() << " != dims[0]*dims[1]*dims[2] ";
+      } 
+      else if (ndims == 2) 
+      { 
+         cout << phi.size() << " != dims[0]*dims[1] ";
+         Nx = dims[0];
+         Ny = dims[1];
+         Nz = 1;
+      }
+      else if (ndims == 1)
+      {
+         cout << phi.size() << " != dims[0] ";
+         Nx = dims[0];
+         Ny = 1;
+         Nz = 1;
+      }
+      else
+      {
+         cout << "Error: ndims not among {1,2,3}" << endl;
+         H5Sclose( phi_dataspace_id );
+         H5Dclose( phi_dataset_id );
+         H5Gclose( group_id );
+         return EXIT_FAILURE;
+      }
+      cout << total_number_of_elements << endl;
+   }
+
+   phi.resize( total_number_of_elements );
+
+   //std::vector<double> input_buffer(total_number_of_elements,0);
+   status = H5Dread(
+         phi_dataset_id, // dataset_id,
+         H5T_NATIVE_DOUBLE, // mem_type_id
+         H5S_ALL, // mem_space_id
+         phi_dataspace_id, // file_space_id
+         H5P_DEFAULT, // xfer_plist_id
+         &phi[0] // void* buf
+         //&input_buffer[0] // void* buf
+         );
+
+   if ( status < 0 )
+   {
+      cout << "error: " 
+         << " failed to read phi from input file "//<< inputFileName
+         << endl; 
+      H5Sclose( phi_dataspace_id );
+      H5Dclose( phi_dataset_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   H5Sclose( phi_dataspace_id );
+   H5Dclose( phi_dataset_id );
+   H5Gclose( group_id );
+
+   return EXIT_SUCCESS;
+}
 #endif

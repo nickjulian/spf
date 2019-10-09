@@ -38,5 +38,15 @@ int read_cmdline_options(
       MPI_Comm comm
       );
 
+int read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      double& rate_scale_factor,
+      int& write_period,
+      bool& flag_calcstat,
+      string& output_prefix,
+      string& input_field_name
+      );
 } // SPF_NS
 #endif

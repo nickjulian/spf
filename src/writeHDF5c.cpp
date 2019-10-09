@@ -14,7 +14,7 @@ int SPF_NS::append_phi_to_hdf5_multinode(
          const hid_t outFile_id,
          const int& time_step,
          const double& time,
-         std::vector<double>& phi, 
+         const std::vector<double>& phi, 
          const int& Nx_local,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
          const std::vector<size_t>& idx_start, 
@@ -253,7 +253,7 @@ int SPF_NS::append_phi_to_hdf5_multinode(
 int SPF_NS::write_phi_to_hdf5_multinode( 
          // write a single state to the entire '/phi' dataset
          const hid_t outFile_id,
-         std::vector<double>& phi, 
+         const std::vector<double>& phi, 
          const int& Nx_local,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
          const std::vector<size_t>& idx_start, 
@@ -299,7 +299,6 @@ int SPF_NS::write_phi_to_hdf5_multinode(
       return EXIT_FAILURE;
    }
 
-// TODO: catch the failure
    dataset_id = H5Dcreate2( 
                            outFile_id, 
                            "/phi", 
@@ -401,6 +400,194 @@ int SPF_NS::write_phi_to_hdf5_multinode(
    H5Dclose( dataset_id );
    return EXIT_SUCCESS;
 }
+
+int SPF_NS::append_phi_to_hdf5_singlenode( 
+         const hid_t outFile_id,
+         const int& time_step,
+         const double& time,
+         const std::string& field_name,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<double>& phi
+         )
+{
+   if ( phi.size() != dims[0] * dims[1] * dims[2] )
+   {
+      cout << "Error, field.size() != dims[0] * dims[1] * dims[2]"
+         << " in function append_phi_to_hdf5_singlenode()"
+         << endl;
+      return EXIT_FAILURE;
+   }
+
+   int failflag; failflag = 0;
+   herr_t status; status = 0;
+   hid_t file_space_id, dataset_id, dataspace_id, memspace_id, group_id;
+   hid_t attribute_id, attribute_dataspace_id;
+
+   //std::vector<double> output_buffer( Nx_local * dims[1] * dims[2], 0 );
+   int ndims; ndims = 3;//dims.size();
+   hsize_t offset[3];
+   hsize_t offset_local[3];
+   hsize_t count[3];
+   //hsize_t h5dims[3];
+   //hsize_t dims_local[3];
+   //for ( size_t ii=0; ii < ndims; ++ii) h5dims[ii] = dims[ii];
+   //dims_local[0] = Nx_local + 2;
+   //for ( size_t ii=1; ii < ndims; ++ii) dims_local[ii] = dims[ii];
+
+   std::string groupName("Step#");
+   //std::string groupName("timestep");
+   std::string datasetName;
+   std::string attributeName( "Time" );
+   hsize_t attribute_dims[1]; attribute_dims[0] = 1;// attributes: Time
+   groupName += std::to_string(time_step);
+   datasetName = "/" + groupName + "/" + field_name;
+   
+   group_id = H5Gcreate2( outFile_id,
+                        groupName.c_str(),
+                        H5P_DEFAULT, // hid_t link creation pl_id  
+                        H5P_DEFAULT, // hid_t group creation pl_id 
+                        H5P_DEFAULT  // hid_t group access pl_id
+                           );
+   if ( group_id < 0 ) 
+   {
+      cout << "Error, " 
+            << " failed to create group " 
+            << groupName
+            << endl;
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   attribute_dataspace_id = H5Screate_simple( 1, attribute_dims, NULL);
+   if ( attribute_dataspace_id < 0 ) 
+   {
+      cout << "Error, " 
+            << " failed to create attribute dataspace for " 
+            << attributeName << " in group "
+            << groupName
+            << endl;
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   attribute_id = H5Acreate2(
+                           group_id,
+                           attributeName.c_str(),
+                           H5T_NATIVE_DOUBLE,
+                           attribute_dataspace_id,
+                           H5P_DEFAULT,
+                           H5P_DEFAULT 
+                           );
+   if ( attribute_id < 0 ) 
+   {
+      cout << "Error, " 
+            << " failed to create attribute " 
+            << attributeName << " in group "
+            << groupName
+            << endl;
+      H5Aclose( attribute_id );
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   status = H5Awrite( 
+                     attribute_id,
+                     H5T_NATIVE_DOUBLE,
+                     &time
+                     );
+   if ( status < 0 ) 
+   {
+      cout << "Error, " 
+            << " failed to write time attribute to group: "
+            << groupName
+            << endl;
+      H5Aclose( attribute_id );
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   H5Aclose( attribute_id );
+   H5Sclose( attribute_dataspace_id );
+
+   // create local memory dataspace
+   memspace_id = H5Screate_simple( ndims, &dims[0], NULL );
+   if ( memspace_id < 0 )
+   {
+      cout << "Error, " 
+         << " failed to create memspace_id"  << endl;
+      H5Sclose( memspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create file dataspace
+   dataspace_id = H5Screate_simple( ndims, &dims[0], NULL );
+   if ( dataspace_id < 0 )
+   {
+      cout << "Error, " 
+         << " failed to create dataspace_id" << endl;
+      H5Sclose( memspace_id );
+      H5Sclose( dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   dataset_id = H5Dcreate2(
+                           outFile_id, 
+                           datasetName.c_str(), //"/phi", 
+                           H5T_NATIVE_DOUBLE, 
+                           dataspace_id, 
+                           H5P_DEFAULT, // link creation property list
+                           H5P_DEFAULT, // dataset creation property list
+                           H5P_DEFAULT // dataset access property list
+                           );
+   if ( dataset_id < 0 ) 
+   {
+         cout << "Error, " 
+            << " failed to create dataset_id from dataspace_id " 
+            << endl;
+      H5Sclose( memspace_id );
+      H5Sclose( dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   count[0] = dims[0];
+   count[1] = dims[1];
+   count[2] = dims[2];
+
+   hsize_t stride[ndims];
+   for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+   hsize_t block[ndims];
+   for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+
+   status = H5Dwrite(
+               dataset_id, // dataset_id
+               H5T_NATIVE_DOUBLE, // mem_type_id
+               memspace_id, // H5S_ALL, // mem_space_id
+               dataspace_id, // file_space_id
+               //dx_plist_id, // xfer_plist_id,
+               H5P_DEFAULT, // xfer_plist_id,
+               &phi[0] // buf
+               );
+   if ( status < 0 ) 
+   {
+      cout << "Error " 
+         << " failed to write field with append_phi_to_hdf5_singlenode()"
+         << endl;
+      H5Sclose( memspace_id );
+      H5Sclose( dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   H5Sclose( memspace_id );
+   H5Sclose( dataspace_id );
+   H5Dclose( dataset_id );
+   H5Gclose( group_id );
+   return EXIT_SUCCESS;
+}
+
 
 int SPF_NS::output_vector_to_hdf5(
       const std::vector<double>& xx,

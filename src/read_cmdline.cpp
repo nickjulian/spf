@@ -16,6 +16,30 @@ int SPF_NS::read_cmdline_options(
       int& write_period,
       bool& flag_calcstat,
       string& output_prefix,
+      string& input_field_name
+      )
+{
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         rate_scale_factor,
+         write_period,
+         flag_calcstat,
+         output_prefix,
+         input_field_name,
+         0, 0,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      double& rate_scale_factor,
+      int& write_period,
+      bool& flag_calcstat,
+      string& output_prefix,
       string& input_field_name,
       const int& mynode,
       const int& rootnode,

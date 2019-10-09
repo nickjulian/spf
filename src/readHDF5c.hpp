@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #include <mpi.h>
-#include <hdf5.h>  
+#include "../include/hdf5.h"
 
 #include "check_for_failure.hpp"
 
@@ -33,6 +33,13 @@ namespace SPF_NS
          const int& rootnode,
          const int& totalnodes,
          MPI_Comm comm
+         );
+
+   int read_phi_from_hdf5_singlenode( 
+         const hid_t inFile_id,
+         const string& group_name,
+         int& Nx, int& Ny, int& Nz,
+         std::vector<double>& phi
          );
 
    int read_dims_from_hdf5( // sets dims[i] = # elements in i^{th} dimension

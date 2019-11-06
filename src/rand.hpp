@@ -67,7 +67,7 @@ namespace SPF_NS
          //std::normal_distribution<double> gaussian_sample;
          //std::poisson_distribution<int> poisson_event_count;
          // CONSTRUCTOR
-         random( const double& r, const double& dt )
+         random( ) //const double& r, const double& dt )
          {
             //std::random_device rd; 
             generator = std::mt19937(rd());

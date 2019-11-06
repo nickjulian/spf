@@ -272,39 +272,39 @@ int main( int argc, char* argv[])
    // TODO: make stability checks dynamic when diffusivity becomes variable
    // For the dynamics to be stable, require
    //  \delta t <= (h^2)/(2*D_{T}) on each independent axis.
-   if ( dt > hh_x*hh_x/(6.0*diffusivityT) ) failflag = -1;
-   if ( check_for_failure( failflag, world_comm) )
-   {
-      MPI_Finalize();
-      if ( mynode == rootnode )
-      {
-         cout << "Error, discretization is unstable: dt > dx/(2 D_T)" << inputFileName
-            << endl;
-      }
-      return EXIT_FAILURE;
-   }
-   if ( dt > hh_y*hh_y/(6.0*diffusivityT) ) failflag = -1;
-   if ( check_for_failure( failflag, world_comm) )
-   {
-      MPI_Finalize();
-      if ( mynode == rootnode )
-      {
-         cout << "Error, discretization is unstable: dt > dy/(2 D_T)" << inputFileName
-            << endl;
-      }
-      return EXIT_FAILURE;
-   }
-   if ( dt > hh_z*hh_z/(6.0*diffusivityT) ) failflag = -1;
-   if ( check_for_failure( failflag, world_comm) )
-   {
-      MPI_Finalize();
-      if ( mynode == rootnode )
-      {
-         cout << "Error, discretization is unstable: dt > dz/(2 D_T)" << inputFileName
-            << endl;
-      }
-      return EXIT_FAILURE;
-   }
+   //if ( dt > hh_x*hh_x/(6.0*diffusivityT) ) failflag = -1;
+   //if ( check_for_failure( failflag, world_comm) )
+   //{
+   //   MPI_Finalize();
+   //   if ( mynode == rootnode )
+   //   {
+   //      cout << "Error, discretization is unstable: dt > dx/(2 D_T)" << inputFileName
+   //         << endl;
+   //   }
+   //   return EXIT_FAILURE;
+   //}
+   //if ( dt > hh_y*hh_y/(6.0*diffusivityT) ) failflag = -1;
+   //if ( check_for_failure( failflag, world_comm) )
+   //{
+   //   MPI_Finalize();
+   //   if ( mynode == rootnode )
+   //   {
+   //      cout << "Error, discretization is unstable: dt > dy/(2 D_T)" << inputFileName
+   //         << endl;
+   //   }
+   //   return EXIT_FAILURE;
+   //}
+   //if ( dt > hh_z*hh_z/(6.0*diffusivityT) ) failflag = -1;
+   //if ( check_for_failure( failflag, world_comm) )
+   //{
+   //   MPI_Finalize();
+   //   if ( mynode == rootnode )
+   //   {
+   //      cout << "Error, discretization is unstable: dt > dz/(2 D_T)" << inputFileName
+   //         << endl;
+   //   }
+   //   return EXIT_FAILURE;
+   //}
    //size_t Nphi_local; Nphi_local = phi_local.size();
    ////////////////////////////////////////////////////////////////////
 
@@ -395,7 +395,7 @@ int main( int argc, char* argv[])
    MPI_Request halo_send_requests[2]; // two Isend per halo
 
    // TODO: see if the random class may be instantiated only once
-   SPF_NS::random rr( 0.01, dt);
+   SPF_NS::random rr;//( 0.01, dt);
 
    //size_t neigh_idx_x[2];
    //size_t neigh_idx_y[2];
@@ -891,6 +891,8 @@ int main( int argc, char* argv[])
             {
                stat_file << setw(10) << setprecision(8) 
                   << time_step << " "
+                  << setw(10) << setprecision(8) 
+                  << time << " "
                   << setw(10) << setprecision(8) 
                   << phi_mean << " "
                   << setw(10) << setprecision(8) 

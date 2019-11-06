@@ -9,14 +9,74 @@
 
 #include <cstdlib>   // EXIT_SUCCESS, EXIT_FAILURE
 #include <vector>
-#include <iostream> // cout, cin, cerr, endl
+#include <iostream>  // cout, cin, cerr, endl
 #include <algorithm> // sort
+#include <math.h>    // sqrt
 
 #include "rand.hpp"
 
 namespace SPF_NS
 {
-   int conserved_gaussian_flux( 
+   //int conserved_gaussian_flux( 
+   //int conserved_gaussian_flux_single_distribution_stratonovich(
+   //int conserved_gaussian_flux_separate_distributions(
+   //int conserved_gaussian_flux_separate_distributions_stratonovich(
+   //int conserved_gaussian_flux_separate_distributions_milstein(
+   int conserved_gaussian_flux_single_distribution(
+      std::vector<double>& local_change, // must be same size as local_field
+      const std::vector<double>& local_field,
+      SPF_NS::random& rr,
+      const double& rate_scale_factor,
+      const double& dt,
+      const size_t& idx,
+      const size_t& neigh_idx_x_a,
+      const size_t& neigh_idx_x_b,
+      const size_t& neigh_idx_y_a,
+      const size_t& neigh_idx_y_b,
+      const size_t& neigh_idx_z_a,
+      const size_t& neigh_idx_z_b,
+      //const int& Nx_total,
+      const int& Ny,
+      const int& Nz
+      );
+
+   int conserved_gaussian_flux_single_distribution_milstein(
+      std::vector<double>& local_change, // must be same size as local_field
+      const std::vector<double>& local_field,
+      SPF_NS::random& rr,
+      const double& rate_scale_factor,
+      const double& dt,
+      const size_t& idx,
+      const size_t& neigh_idx_x_a,
+      const size_t& neigh_idx_x_b,
+      const size_t& neigh_idx_y_a,
+      const size_t& neigh_idx_y_b,
+      const size_t& neigh_idx_z_a,
+      const size_t& neigh_idx_z_b,
+      //const int& Nx_total,
+      const int& Ny,
+      const int& Nz
+      );
+
+int conserved_gaussian_flux_separate_distributions(
+      std::vector<double>& local_change, // must be same size as local_field
+      const std::vector<double>& local_field,
+      SPF_NS::random& rr,
+      const double& rate_scale_factor,
+      const double& dt,
+      const size_t& idx,
+      const size_t& neigh_idx_x_a,
+      const size_t& neigh_idx_x_b,
+      const size_t& neigh_idx_y_a,
+      const size_t& neigh_idx_y_b,
+      const size_t& neigh_idx_z_a,
+      const size_t& neigh_idx_z_b,
+      //const int& Nx_total,
+      const int& Ny,
+      const int& Nz
+      );
+
+int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       std::vector<double>& local_change, // must be same size as local_field
       const std::vector<double>& local_field,
       SPF_NS::random& rr,

@@ -95,28 +95,28 @@ int main( int argc, char* argv[])
    std::vector<double> phi_sum;
    std::vector<double> phi_sqr_sum;
    hid_t inFile_id, phi_dataset_id, phi_dataspace_id, phi_group_id;
-   hid_t outFileAverage_id, outFileVariance_id;
+   hid_t outFileSum_id, outFileSqrSum_id;
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
    // open files to write the statistical evolution to
-   string outputFileNameVariance; 
-   outputFileNameVariance = output_prefix + "_variance.h5";
-   outFileVariance_id = H5Fcreate(outputFileNameVariance.c_str(), 
+   string outputFileNameSqrSum; 
+   outputFileNameSqrSum = output_prefix + "_sqr_sum.h5";
+   outFileSqrSum_id = H5Fcreate(outputFileNameSqrSum.c_str(), 
                         H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-   string outputFileNameAverage; 
-   outputFileNameAverage = output_prefix + "_average.h5";
-   outFileAverage_id = H5Fcreate(outputFileNameAverage.c_str(), 
+   string outputFileNameSum; 
+   outputFileNameSum = output_prefix + "_sum.h5";
+   outFileSum_id = H5Fcreate(outputFileNameSum.c_str(), 
                         H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-   if ((outFileVariance_id < 0) || (outFileAverage_id < 0)) 
+   if ((outFileSqrSum_id < 0) || (outFileSum_id < 0)) 
    {
          cout << "Error, failed to open files for writing: " 
             << endl << "   "
-            << outputFileNameVariance << endl
+            << outputFileNameSqrSum << endl
             << endl << "   "
-            << outputFileNameAverage << endl;
-      H5Fclose( outFileVariance_id );
-      H5Fclose( outFileAverage_id );
+            << outputFileNameSum << endl;
+      H5Fclose( outFileSqrSum_id );
+      H5Fclose( outFileSum_id );
       return EXIT_FAILURE;
    }
    ////////////////////////////////////////////////////////////////////
@@ -215,39 +215,39 @@ int main( int argc, char* argv[])
          /*--------------------------------------------------------*/
 
          // calculate the average and variance of the current time step
-         cout << "calculating average and variance at each voxel" // debug
-            << endl; // debug
-         for ( size_t ii=0; ii < Nx; ++ii)
-            for ( size_t jj=0; jj < Ny; ++jj)
-               for ( size_t kk=0; kk < Nz; ++kk)
-               {
-                  phi_sum[kk + Nz*(jj + Ny*ii)] 
-                   = (phi_sum[kk + Nz*(jj + Ny*ii)] )/ Nstates;
+         //cout << "calculating average and variance at each voxel" // debug
+         //   << endl; // debug
+         //for ( size_t ii=0; ii < Nx; ++ii)
+         //   for ( size_t jj=0; jj < Ny; ++jj)
+         //      for ( size_t kk=0; kk < Nz; ++kk)
+         //      {
+         //         phi_sum[kk + Nz*(jj + Ny*ii)] 
+         //          = (phi_sum[kk + Nz*(jj + Ny*ii)] )/ Nstates;
 
-                  phi_sqr_sum[kk + Nz*(jj + Ny*ii)] 
-                     = phi_sqr_sum[kk + Nz*(jj + Ny*ii)] / Nstates
-                        - (phi_sum[kk + Nz*(jj + Ny*ii)]
-                           * phi_sum[kk + Nz*(jj + Ny*ii)]);
-               }
-         cout << "saving averages to file "  // debug
-            << outputFileNameAverage << endl; // debug
+         //         phi_sqr_sum[kk + Nz*(jj + Ny*ii)] 
+         //            = phi_sqr_sum[kk + Nz*(jj + Ny*ii)] / Nstates
+         //               - (phi_sum[kk + Nz*(jj + Ny*ii)]
+         //                  * phi_sum[kk + Nz*(jj + Ny*ii)]);
+         //      }
+         cout << "saving sums to file "  // debug
+            << outputFileNameSum << endl; // debug
          // write the average and variance of the current time to file
          append_phi_to_hdf5_singlenode( 
-               outFileAverage_id,
+               outFileSum_id,
                time_step,
                time,
-               "average",
+               "sum",
                dims, // dims.size() == 3
                phi_sum
                );
 
-         cout << "saving variances to file "  // debug
-            << outputFileNameVariance << endl; // debug
+         cout << "saving sum of squares to file "  // debug
+            << outputFileNameSqrSum << endl; // debug
          append_phi_to_hdf5_singlenode( 
-               outFileVariance_id,
+               outFileSqrSum_id,
                time_step,
                time,
-               "variance",
+               "sqr_sum",
                dims, // dims.size() == 3
                phi_sqr_sum
                );
@@ -266,8 +266,8 @@ int main( int argc, char* argv[])
    /* end loop over time ------------------------------------------*/
    /*--------------------------------------------------------------*/
 
-   H5Fclose( outFileVariance_id );
-   H5Fclose( outFileAverage_id );
+   H5Fclose( outFileSqrSum_id );
+   H5Fclose( outFileSum_id );
    MPI_Finalize();
    return EXIT_SUCCESS;
 }

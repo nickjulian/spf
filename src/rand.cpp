@@ -15,7 +15,8 @@ using std::endl;
 
 int SPF_NS::random::gaussiandisplacement1D( double& xx, const double& scale)
 {
-   xx = scale * (2.0*uniform_scale( generator ) - 1.0);
+   std::normal_distribution<double> gd( 0.0, 1.0 );
+   xx = scale * gd( rr.generator );
    return EXIT_SUCCESS;
 }
 

@@ -28,11 +28,18 @@ TARGET	= $(ROOT)/bin/test.x
 #	$(CXX) $(ROOT)/src/test_marcus_drift.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus_drift.x
 
 spf: $(OBJS) #$(HOBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
+	$(CXX) $(ROOT)/src/spf_pure_gaussian_single.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_single.x
+	$(CXX) $(ROOT)/src/spf_pure_gaussian_single_milstein.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_single_milstein.x
+	$(CXX) $(ROOT)/src/spf_pure_gaussian_separate.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_separate.x
+	$(CXX) $(ROOT)/src/spf_pure_gaussian_separate_milstein.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_separate_milstein.x
 	$(CXX) $(ROOT)/src/spf_pure_poisson.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson.x
+#	$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
 
 stats: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/statsHDF5.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_stats.x
+
+1d-walks: $(OBJS)
+	$(CXX) $(ROOT)/src/walk_ensembles_1d.cpp  $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_walk_ensembles_1d.x
 
 #$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
 
@@ -46,4 +53,4 @@ all:	$(TARGET)
 #all:	poisson random marcus
 
 clean:
-	rm -f $(OBJS) $(HOBJS) $(TARGET) 
+	rm -f $(OBJS) $(HOBJS) $(TARGET)  ../bin/spf_1d.x

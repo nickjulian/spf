@@ -589,8 +589,7 @@ int main( int argc, char* argv[])
                //conserved_gaussian_flux_single_distribution_stratonovich( 
                //conserved_gaussian_flux_single_distribution_milstein( 
                //conserved_gaussian_flux_single_distribution( 
-               //conserved_gaussian_flux_separate_distributions( 
-               conserved_gaussian_flux_separate_distributions_milstein( 
+               conserved_gaussian_flux_separate_distributions( 
                      phi_local_change,
                      phi_local,
                      rr,

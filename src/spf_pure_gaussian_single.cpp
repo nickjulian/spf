@@ -586,11 +586,10 @@ int main( int argc, char* argv[])
                      Ny, Nz
                      );
 
+               //conserved_gaussian_flux_separate_distributions( 
                //conserved_gaussian_flux_single_distribution_stratonovich( 
                //conserved_gaussian_flux_single_distribution_milstein( 
-               //conserved_gaussian_flux_single_distribution( 
-               //conserved_gaussian_flux_separate_distributions( 
-               conserved_gaussian_flux_separate_distributions_milstein( 
+               conserved_gaussian_flux_single_distribution( 
                      phi_local_change,
                      phi_local,
                      rr,

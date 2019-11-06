@@ -11,7 +11,7 @@
 
 #include "voxel_dynamics.hpp"
 
-int SPF_NS::conserved_gaussian_flux( 
+int SPF_NS::conserved_gaussian_flux_single_distribution_milstein(
    std::vector<double>& local_change, // must be same size as local_field
    const std::vector<double>& local_field,
    SPF_NS::random& rr,
@@ -44,44 +44,44 @@ int SPF_NS::conserved_gaussian_flux(
 
    int exiting_current_voxel; exiting_current_voxel = 0;
 
-   size_t dest_idx;
+   //size_t dest_idx;
 
    // evaluate jump rates in each direction
    // TODO: establish reasoning for these choices ... !
    double jump_rate; 
 
-   // evaluate jump magnitude in each direction
-
    jump_rate = rate_scale_factor 
                   * (local_field[idx]);// + change_to_current_voxel);
+   
+   // evaluate jump magnitude in each direction
+   double total_exiting_current_voxel, dw, drift;
+   total_exiting_current_voxel  = 0;
+   drift = jump_rate;
+
    //std::cout << "jump rate : " << jump_rate << std::endl; //debug
    if ( jump_rate > 0.0 ) 
    {
-      std::normal_distribution<double> gd( jump_rate * dt, jump_rate *dt);
-      // multiply by 0.5 to compensate for the absolute value 
-      // since Gaussian sigma_{2*x}^2 == 2*sigma_x^2 for Gaussian x.
-      //exiting_current_voxel = round(abs(0.5* gd( rr.generator )));
-      double jump; jump = gd( rr.generator );
-      if ( jump < 0 ) jump =0;
-      // exiting_current_voxel = round( jump );
-      exiting_current_voxel = jump;
+      //std::normal_distribution<double> gd(jump_rate *dt, jump_rate *dt);
+      std::normal_distribution<double> gd( 0.0, 1.0 );
+      dw = sqrt(dt) * gd( rr.generator );
 
-      //std::list<int> dest_idx_randomized;
-      if ( exiting_current_voxel >= local_field[idx] )
+      total_exiting_current_voxel
+         = (drift * dt)               // f(x) dt
+            + (jump_rate * dw)        // g(x) dw
+            + (0.5 * jump_rate * rate_scale_factor // + 0.5 g(x) g'(x)
+                * (dw * dw - dt));    // *( (dw)^2 - dt )
+
+      if ( total_exiting_current_voxel > local_field[idx])
       {
-         exiting_current_voxel = local_field[idx];
+         total_exiting_current_voxel = local_field[idx];
       }
-
-      if ( exiting_current_voxel > 0) 
-      {
-         //for (int ii=0; ii < exiting_current_voxel; ++ii)
-         //{
-         //   // choose which neighbor to send this walker to
-         //   std::uniform_int_distribution<int> ud(0,5);
-         //   dest_idx = ud( rr.generator );
-         //   jump_magnitudes[dest_idx] += 1.0;
-         //}
          
+      if ( total_exiting_current_voxel < 0)
+      {
+         total_exiting_current_voxel  = 0;
+      }
+      else
+      {
          // choose how to distribute the flux among neighbors
          std::vector<double> random_points;
          std::uniform_real_distribution<double> ud(0,1);
@@ -90,26 +90,21 @@ int SPF_NS::conserved_gaussian_flux(
             random_points.push_back( ud( rr.generator ) );
          }
 
+         // sort the random points into ascending order
          std::sort( random_points.begin(), random_points.end() );
-
-         jump_magnitudes[0] = exiting_current_voxel*random_points[0] ;
-         jump_magnitudes[1] = exiting_current_voxel
-                                 *(random_points[1] - random_points[0]);
-         jump_magnitudes[2] = exiting_current_voxel
-                                 *(random_points[2] - random_points[1]);
-         jump_magnitudes[3] = exiting_current_voxel
-                                 *(random_points[3] - random_points[2]);
-         jump_magnitudes[4] = exiting_current_voxel
-                                 *(random_points[4] - random_points[3]);
-         jump_magnitudes[5] = exiting_current_voxel
-                                 *(1.0 - random_points[4]);
+         jump_magnitudes[0] = total_exiting_current_voxel
+                                 * random_points[0];
+         jump_magnitudes[1] = total_exiting_current_voxel
+                                 * (random_points[1] - random_points[0]);
+         jump_magnitudes[2] = total_exiting_current_voxel
+                                 * (random_points[2] - random_points[1]);
+         jump_magnitudes[3] = total_exiting_current_voxel
+                                 * (random_points[3] - random_points[2]);
+         jump_magnitudes[4] = total_exiting_current_voxel
+                                 * (random_points[4] - random_points[3]);
+         jump_magnitudes[5] = total_exiting_current_voxel
+                                 * (1.0 - random_points[4]);
       }
-      else 
-         if ( exiting_current_voxel < 0 )
-         {
-            std::cout  << "somehow 'exiting_current_voxel' < 0" 
-               << std::endl;
-         }
 
       local_change[neigh_idx_x_a] += jump_magnitudes[0];
       local_change[neigh_idx_x_b] += jump_magnitudes[1];
@@ -117,8 +112,452 @@ int SPF_NS::conserved_gaussian_flux(
       local_change[neigh_idx_y_b] += jump_magnitudes[3];
       local_change[neigh_idx_z_a] += jump_magnitudes[4];
       local_change[neigh_idx_z_b] += jump_magnitudes[5];
+
    }
-   local_change[idx] -= exiting_current_voxel;
+   local_change[idx] -= total_exiting_current_voxel;
+   
+   /////////////////////////////////////////////////////////
+
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::conserved_gaussian_flux_single_distribution(
+   std::vector<double>& local_change, // must be same size as local_field
+   const std::vector<double>& local_field,
+   SPF_NS::random& rr,
+   const double& rate_scale_factor,
+   const double& dt,
+   const size_t& idx,
+   const size_t& neigh_idx_x_a,
+   const size_t& neigh_idx_x_b,
+   const size_t& neigh_idx_y_a,
+   const size_t& neigh_idx_y_b,
+   const size_t& neigh_idx_z_a,
+   const size_t& neigh_idx_z_b,
+   //const int& Nx_total,
+   const int& Ny,
+   const int& Nz
+   )
+{
+   // assuming periodic boundary conditions
+
+   /////////////////////////////////////////////////////////
+   // evaluate local fluxes and changes
+   // using local_field[idx]
+   // and its neighbors indexed by neigh_x/y/z_idx[] 
+   // and accumulate field changes to 
+   //  local_change[idx]
+   //  and its neighbors local_change[neigh_x/y/z_idx[]]]
+
+   double jump_magnitudes[6]; // assumes ndims == 3
+   for (size_t ii=0; ii < 6; ++ii) jump_magnitudes[ii] = 0;
+
+   int exiting_current_voxel; exiting_current_voxel = 0;
+
+   //size_t dest_idx;
+
+   // evaluate jump rates in each direction
+   // TODO: establish reasoning for these choices ... !
+   double jump_rate; 
+
+   jump_rate = rate_scale_factor 
+                  * (local_field[idx]);// + change_to_current_voxel);
+   
+   // evaluate jump magnitude in each direction
+   double total_exiting_current_voxel, dw, drift;
+   drift = jump_rate;
+
+   //std::cout << "jump rate : " << jump_rate << std::endl; //debug
+   if ( jump_rate > 0.0 ) 
+   {
+      //std::normal_distribution<double> gd(jump_rate *dt, jump_rate *dt);
+      //std::normal_distribution<double> gd( drift, jump_rate );
+      std::normal_distribution<double> gd( 0.0, 1.0);
+      dw = sqrt(dt) * gd( rr.generator );
+
+      //total_exiting_current_voxel = dw;
+      total_exiting_current_voxel = (drift * dt) + jump_rate * dw;
+
+      if ( total_exiting_current_voxel > local_field[idx])
+      {
+         total_exiting_current_voxel = local_field[idx];
+      }
+         
+      if ( total_exiting_current_voxel < 0)
+      {
+         total_exiting_current_voxel  = 0;
+      }
+      else
+      {
+         // choose how to distribute the flux among neighbors
+         std::vector<double> random_points;
+         std::uniform_real_distribution<double> ud(0,1);
+         for ( size_t ii=0; ii < 5; ++ii)
+         {
+            random_points.push_back( ud( rr.generator ) );
+         }
+
+         // sort the random points into ascending order
+         std::sort( random_points.begin(), random_points.end() );
+         jump_magnitudes[0] = total_exiting_current_voxel
+                                 * random_points[0];
+         jump_magnitudes[1] = total_exiting_current_voxel
+                                 * (random_points[1] - random_points[0]);
+         jump_magnitudes[2] = total_exiting_current_voxel
+                                 * (random_points[2] - random_points[1]);
+         jump_magnitudes[3] = total_exiting_current_voxel
+                                 * (random_points[3] - random_points[2]);
+         jump_magnitudes[4] = total_exiting_current_voxel
+                                 * (random_points[4] - random_points[3]);
+         jump_magnitudes[5] = total_exiting_current_voxel
+                                 * (1.0 - random_points[4]);
+      }
+
+      local_change[neigh_idx_x_a] += jump_magnitudes[0];
+      local_change[neigh_idx_x_b] += jump_magnitudes[1];
+      local_change[neigh_idx_y_a] += jump_magnitudes[2];
+      local_change[neigh_idx_y_b] += jump_magnitudes[3];
+      local_change[neigh_idx_z_a] += jump_magnitudes[4];
+      local_change[neigh_idx_z_b] += jump_magnitudes[5];
+
+   }
+   local_change[idx] -= total_exiting_current_voxel;
+   
+   /////////////////////////////////////////////////////////
+
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::conserved_gaussian_flux_separate_distributions_gradient_milstein(
+   std::vector<double>& local_change, // must be same size as local_field
+   const std::vector<double>& local_field,
+   SPF_NS::random& rr,
+   const double& rate_scale_factor,
+   const double& dt,
+   const size_t& idx,
+   const size_t& neigh_idx_x_a,
+   const size_t& neigh_idx_x_b,
+   const size_t& neigh_idx_y_a,
+   const size_t& neigh_idx_y_b,
+   const size_t& neigh_idx_z_a,
+   const size_t& neigh_idx_z_b,
+   //const int& Nx_total,
+   const int& Ny,
+   const int& Nz
+   )
+{
+   // assuming periodic boundary conditions
+   // WARNING: this is assymetrical and could lead to excess flow
+   //          along the negative direction along each axis
+   // TODO: maybe find a better solution
+
+   /////////////////////////////////////////////////////////
+   // evaluate local fluxes and changes
+   // using local_field[idx]
+   // and its neighbors indexed by neigh_x/y/z_idx[] 
+   // and accumulate field changes to 
+   //  local_change[idx]
+   //  and its neighbors local_change[neigh_x/y/z_idx[]]]
+
+   //double jump_magnitudes[6]; // assumes ndims == 3
+   double drift[6]; // assumes ndims == 3
+   double jump_variance[6]; // assumes ndims == 3
+   double jump_rate[6]; // assumes ndims == 3
+   double dw[6]; // assumes ndims == 3
+   double exiting_current_voxel_x_a; exiting_current_voxel_x_a = 0;
+   //double exiting_current_voxel_x_b; exiting_current_voxel_x_b = 0;
+   double exiting_current_voxel_y_a; exiting_current_voxel_y_a = 0;
+   //double exiting_current_voxel_y_b; exiting_current_voxel_y_b = 0;
+   double exiting_current_voxel_z_a; exiting_current_voxel_z_a = 0;
+   //double exiting_current_voxel_z_b; exiting_current_voxel_z_b = 0;
+
+   //for (size_t ii=0; ii < 6; ++ii) jump_magnitudes[ii] = 0;
+
+   // evaluate jump rates in each direction
+   // TODO: establish reasoning for these choices ... !
+
+   drift[0] = rate_scale_factor 
+                  * (1.0/6.0)
+                  * (local_field[idx] - local_field[neigh_idx_x_a]);
+   //drift[1] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_x_b]);
+   drift[2] = rate_scale_factor 
+                  * (1.0/6.0)
+                  * (local_field[idx] - local_field[neigh_idx_y_a]);
+   //drift[3] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_y_b]);
+   drift[4] = rate_scale_factor 
+                  * (1.0/6.0)
+                  * (local_field[idx] - local_field[neigh_idx_z_a]);
+   //drift[5] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_z_b]);
+
+   jump_rate[0] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_rate[1] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_rate[2] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_rate[3] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_rate[4] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_rate[5] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+
+   jump_variance[0] = jump_rate[0];
+   //jump_variance[1] = jump_rate[1];
+   jump_variance[2] = jump_rate[2];
+   //jump_variance[3] = jump_rate[3];
+   jump_variance[4] = jump_rate[4];
+   //jump_variance[5] = jump_rate[5];
+
+   //total_exiting_current_voxel
+   //      = drift * dt               // f(x) dt
+   //         + jump_rate * dw        // g(x) dw
+   //         + 0.5 * jump_rate * rate_scale_factor // + 0.5 g(x) g'(x)
+   //            * (dw * dw - dt);    // *( (dw)^2 - dt )
+
+   std::normal_distribution<double> gd( 0.0, 1.0 );
+
+   dw[0] = sqrt(dt) * gd( rr.generator );
+   //dw[1] = sqrt(dt) * gd( rr.generator );
+   dw[2] = sqrt(dt) * gd( rr.generator );
+   //dw[3] = sqrt(dt) * gd( rr.generator );
+   dw[4] = sqrt(dt) * gd( rr.generator );
+   //dw[5] = sqrt(dt) * gd( rr.generator );
+
+   exiting_current_voxel_x_a 
+      = drift[0] * dt                              // f(x) dt
+         + jump_rate[0] * dw[0]                    // + g(x) dw
+         + 0.5 * jump_rate[0]                      // + 0.5 g(x) 
+           * (1.0/6.0)*rate_scale_factor           // * g'(x)
+           * ( dw[0] * dw[0] - dt);                // *( (dw)^2 - dt )
+   //exiting_current_voxel_x_b
+   exiting_current_voxel_y_a 
+      = drift[2] * dt                              // f(x) dt
+         + jump_rate[2] * dw[2]                    // + g(x) dw
+         + 0.5 * jump_rate[2]                      // + 0.5 g(x)
+           * (1.0/6.0)*rate_scale_factor           // *  g'(x)
+           * ( dw[2] * dw[2] - dt);                // *( (dw)^2 - dt )
+   //exiting_current_voxel_y_b
+   exiting_current_voxel_z_a 
+      = drift[4] * dt                              // f(x) dt
+         + jump_rate[4] * dw[4]                    // + g(x) dw
+         + 0.5 * jump_rate[4]                      // + 0.5 g(x) 
+           * (1.0/6.0)*rate_scale_factor           // * g'(x)
+           * ( dw[4] * dw[4] - dt);                // *( (dw)^2 - dt )
+   //exiting_current_voxel_z_b
+   
+   double total_exiting_current_voxel;
+   total_exiting_current_voxel
+         = exiting_current_voxel_x_a //+ exiting_current_voxel_x_b 
+            + exiting_current_voxel_y_a //+ exiting_current_voxel_y_b 
+            + exiting_current_voxel_z_a; //+ exiting_current_voxel_z_b;
+
+   // if total amount leaving is greater than is present, rescale them all
+   if (total_exiting_current_voxel >local_field[idx])//+local_change[idx])
+   {
+      double rescaling_factor; 
+      rescaling_factor = local_field[idx]/total_exiting_current_voxel;
+
+      exiting_current_voxel_x_a 
+         = exiting_current_voxel_x_a * rescaling_factor;
+      //exiting_current_voxel_x_b
+      //   = exiting_current_voxel_x_b * rescaling_factor;
+      exiting_current_voxel_y_a 
+         = exiting_current_voxel_y_a * rescaling_factor;
+      //exiting_current_voxel_y_b
+      //   = exiting_current_voxel_y_b * rescaling_factor;
+      exiting_current_voxel_z_a 
+         = exiting_current_voxel_z_a * rescaling_factor;
+      //exiting_current_voxel_z_b
+      //   = exiting_current_voxel_z_b * rescaling_factor;
+      
+      total_exiting_current_voxel = local_field[idx];
+   }
+
+   // If the neighbors have enough to supply the change, apply it,
+   //  otherwise restrict the change to the amount they currently have.
+   // WARNING: this is assymetrical and could lead to excess flow
+   //          along the negative direction along each axis
+   // TODO: maybe find a better solution
+   //  The preceding block rescales all outward flux of a voxel,
+   //   but in this inward flux case we don't know what other fluxes
+   //   the neighbor has so we can't rescale them.
+   if ( local_field[neigh_idx_x_a] + exiting_current_voxel_x_a 
+         + local_change[neigh_idx_x_a] < 0)
+   {
+      exiting_current_voxel_x_a 
+        = -1.0*(local_change[neigh_idx_x_a] + local_field[neigh_idx_x_a]);
+   }
+   if ( local_field[neigh_idx_y_a] + exiting_current_voxel_y_a 
+         + local_change[neigh_idx_y_a] < 0)
+   {
+      exiting_current_voxel_y_a 
+        = -1.0*(local_change[neigh_idx_y_a] + local_field[neigh_idx_y_a]);
+   }
+   if ( local_field[neigh_idx_z_a] + exiting_current_voxel_z_a 
+         + local_change[neigh_idx_z_a] < 0)
+   {
+      exiting_current_voxel_z_a 
+        = -1.0*(local_change[neigh_idx_z_a] + local_field[neigh_idx_z_a]);
+   }
+
+   local_change[neigh_idx_x_a] += exiting_current_voxel_x_a;
+   local_change[neigh_idx_y_a] += exiting_current_voxel_y_a;
+   local_change[neigh_idx_z_a] += exiting_current_voxel_z_a;
+
+
+   local_change[idx] -= total_exiting_current_voxel;
+   
+   /////////////////////////////////////////////////////////
+
+   return EXIT_SUCCESS;
+}
+
+
+int SPF_NS::conserved_gaussian_flux_separate_distributions(
+   std::vector<double>& local_change, // must be same size as local_field
+   const std::vector<double>& local_field,
+   SPF_NS::random& rr,
+   const double& rate_scale_factor,
+   const double& dt,
+   const size_t& idx,
+   const size_t& neigh_idx_x_a,
+   const size_t& neigh_idx_x_b,
+   const size_t& neigh_idx_y_a,
+   const size_t& neigh_idx_y_b,
+   const size_t& neigh_idx_z_a,
+   const size_t& neigh_idx_z_b,
+   //const int& Nx_total,
+   const int& Ny,
+   const int& Nz
+   )
+{
+   // assuming periodic boundary conditions
+   // WARNING: this is assymetrical and could lead to excess flow
+   //          along the negative direction along each axis
+   // TODO: maybe find a better solution
+
+   /////////////////////////////////////////////////////////
+   // evaluate local fluxes and changes
+   // using local_field[idx]
+   // and its neighbors indexed by neigh_x/y/z_idx[] 
+   // and accumulate field changes to 
+   //  local_change[idx]
+   //  and its neighbors local_change[neigh_x/y/z_idx[]]]
+
+   //double jump_magnitudes[6]; // assumes ndims == 3
+   double jump_mean[6]; // assumes ndims == 3
+   double jump_variance[6]; // assumes ndims == 3
+   double exiting_current_voxel_x_a; exiting_current_voxel_x_a = 0;
+   //double exiting_current_voxel_x_b; exiting_current_voxel_x_b = 0;
+   double exiting_current_voxel_y_a; exiting_current_voxel_y_a = 0;
+   //double exiting_current_voxel_y_b; exiting_current_voxel_y_b = 0;
+   double exiting_current_voxel_z_a; exiting_current_voxel_z_a = 0;
+   //double exiting_current_voxel_z_b; exiting_current_voxel_z_b = 0;
+
+   //for (size_t ii=0; ii < 6; ++ii) jump_magnitudes[ii] = 0;
+
+   // evaluate jump rates in each direction
+   // TODO: establish reasoning for these choices ... !
+
+   jump_mean[0] = rate_scale_factor 
+                  * (local_field[idx] - local_field[neigh_idx_x_a]);
+   //jump_mean[1] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_x_b]);
+   jump_mean[2] = rate_scale_factor 
+                  * (local_field[idx] - local_field[neigh_idx_y_a]);
+   //jump_mean[3] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_y_b]);
+   jump_mean[4] = rate_scale_factor 
+                  * (local_field[idx] - local_field[neigh_idx_z_a]);
+   //jump_mean[5] = rate_scale_factor 
+   //               * (local_field[idx] - local_field[neigh_idx_z_b]);
+
+   jump_variance[0] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_variance[1] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_variance[2] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_variance[3] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_variance[4] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   //jump_variance[5] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+
+   std::normal_distribution<double>
+         gd_x_a( jump_mean[0], jump_variance[0] );
+   exiting_current_voxel_x_a = sqrt(dt) * gd_x_a( rr.generator );
+   //std::normal_distribution<double>
+   //      gd_x_b( jump_mean[1], jump_variance[1] );
+   //exiting_current_voxel_x_b = sqrt(dt) * gd_x_b( rr.generator );
+   std::normal_distribution<double>
+         gd_y_a( jump_mean[2], jump_variance[2] );
+   exiting_current_voxel_y_a = sqrt(dt) * gd_y_a( rr.generator );
+   //std::normal_distribution<double>
+   //      gd_y_b( jump_mean[3], jump_variance[3] );
+   //exiting_current_voxel_y_b = sqrt(dt) * gd_y_b( rr.generator );
+
+   std::normal_distribution<double>
+         gd_z_a( jump_mean[4], jump_variance[4] );
+   exiting_current_voxel_z_a = sqrt(dt) * gd_z_a( rr.generator );
+   //std::normal_distribution<double>
+   //      gd_z_b( jump_mean[5], jump_variance[5] );
+   //exiting_current_voxel_z_b = sqrt(dt) * gd_z_b( rr.generator );
+   
+   double total_exiting_current_voxel;
+   total_exiting_current_voxel
+         = exiting_current_voxel_x_a //+ exiting_current_voxel_x_b 
+            + exiting_current_voxel_y_a //+ exiting_current_voxel_y_b 
+            + exiting_current_voxel_z_a; //+ exiting_current_voxel_z_b;
+
+   // if total amount leaving is greater than is present, rescale them all
+   if (total_exiting_current_voxel >local_field[idx])//+local_change[idx])
+   {
+      double rescaling_factor; 
+      rescaling_factor = local_field[idx]/total_exiting_current_voxel;
+
+      exiting_current_voxel_x_a 
+         = exiting_current_voxel_x_a * rescaling_factor;
+      //exiting_current_voxel_x_b
+      //   = exiting_current_voxel_x_b * rescaling_factor;
+      exiting_current_voxel_y_a 
+         = exiting_current_voxel_y_a * rescaling_factor;
+      //exiting_current_voxel_y_b
+      //   = exiting_current_voxel_y_b * rescaling_factor;
+      exiting_current_voxel_z_a 
+         = exiting_current_voxel_z_a * rescaling_factor;
+      //exiting_current_voxel_z_b
+      //   = exiting_current_voxel_z_b * rescaling_factor;
+      
+      total_exiting_current_voxel = local_field[idx];
+   }
+
+   // If the neighbors have enough to supply the change, apply it,
+   //  otherwise restrict the change to the amount they currently have.
+   // WARNING: this is assymetrical and could lead to erroneous flow
+   //          along the negative direction along each axis
+   // TODO: maybe find a better solution
+   //  The preceding block rescales all outward flux of a voxel,
+   //   but in this inward flux case we don't know what other fluxes
+   //   the neighbor has so we can't rescale them.
+   if ( local_field[neigh_idx_x_a] + exiting_current_voxel_x_a 
+         + local_change[neigh_idx_x_a] < 0)
+   {
+      exiting_current_voxel_x_a 
+        = -1.0*(local_change[neigh_idx_x_a] + local_field[neigh_idx_x_a]);
+   }
+   if ( local_field[neigh_idx_y_a] + exiting_current_voxel_y_a 
+         + local_change[neigh_idx_y_a] < 0)
+   {
+      exiting_current_voxel_y_a 
+        = -1.0*(local_change[neigh_idx_y_a] + local_field[neigh_idx_y_a]);
+   }
+   if ( local_field[neigh_idx_z_a] + exiting_current_voxel_z_a 
+         + local_change[neigh_idx_z_a] < 0)
+   {
+      exiting_current_voxel_z_a 
+        = -1.0*(local_change[neigh_idx_z_a] + local_field[neigh_idx_z_a]);
+   }
+
+   local_change[neigh_idx_x_a] += exiting_current_voxel_x_a;
+   local_change[neigh_idx_y_a] += exiting_current_voxel_y_a;
+   local_change[neigh_idx_z_a] += exiting_current_voxel_z_a;
+
+
+   local_change[idx] -= total_exiting_current_voxel;
    
    /////////////////////////////////////////////////////////
 

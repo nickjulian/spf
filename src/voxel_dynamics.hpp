@@ -23,7 +23,7 @@ namespace SPF_NS
    //int conserved_gaussian_flux_separate_distributions_stratonovich(
    //int conserved_gaussian_flux_separate_distributions_milstein(
    int conserved_gaussian_flux_single_distribution(
-      std::vector<double>& local_change, // must be same size as local_field
+      std::vector<double>& local_change,// must be same size as local_field
       const std::vector<double>& local_field,
       SPF_NS::random& rr,
       const double& rate_scale_factor,
@@ -94,7 +94,7 @@ int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       const int& Nz
       );
 
-   int conserved_jump_flux( 
+   int conserved_jump_flux_single_distribution( 
       std::vector<double>& local_change, // must be same size as local_field
       const std::vector<double>& local_field,
       SPF_NS::random& rr,
@@ -108,6 +108,29 @@ int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       const size_t& neigh_idx_z_a,
       const size_t& neigh_idx_z_b,
       //const int& Nx_total,
+      const int& Ny,
+      const int& Nz);
+
+   int conserved_jump_flux_separate_distributions( 
+      std::vector<double>& local_change,// must be same size as local_field
+      const std::vector<double>& local_field,
+      SPF_NS::random& rr,
+      const std::vector<double>& jump_rates,  // 6 elements
+      const double& dt,
+      const size_t& idx,
+      const std::vector<size_t>& neigh_idxs,  // 6 elements
+      const int& Ny,
+      const int& Nz);
+
+   int conserved_gaussian_flux_separate_distributions( 
+      std::vector<double>& local_change,// must be same size as local_field
+      const std::vector<double>& local_field,
+      SPF_NS::random& rr,
+      const std::vector<double>& jump_rates,  // 6 elements
+      const std::vector<double>& jump_rate_derivatives,  // 6 elements
+      const double& dt,
+      const size_t& idx,
+      const std::vector<size_t>& neigh_idxs,  // 6 elements
       const int& Ny,
       const int& Nz);
 

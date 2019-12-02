@@ -34,7 +34,7 @@ int SPF_NS::random::unitdisplacement1D( double& xx, const double& fwd,
       return EXIT_FAILURE;
    }
 
-   xx = uniform_scale( generator );
+   xx = uniform_scale( generator ); // uniform real rv in (0,1)
 
    if ( xx < fwd ) 
    {

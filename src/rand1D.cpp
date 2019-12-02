@@ -13,14 +13,14 @@
 using std::cout;
 using std::endl;
 
-double TEM_NS::random::exponentialWaitTime( const double& rate, const double& totalRate )
+double SPF_NS::random::exponentialWaitTime( const double& rate, const double& totalRate )
 {
    double r1;
    r1 = uniform_scale( generator );
    return (1.0/totalRate)*log(1.0/r1);
 }
 
-bool TEM_NS::random::poisson_trial()
+bool SPF_NS::random::poisson_trial()
 {
    if ( uniform_scale(generator) <= subinterval )
       return true;
@@ -28,13 +28,13 @@ bool TEM_NS::random::poisson_trial()
       return false;
 }
 
-int TEM_NS::random::gaussiandisplacement1D( double& xx, const double& scale)
+int SPF_NS::random::gaussiandisplacement1D( double& xx, const double& scale)
 {
    xx = scale * (2.0*uniform_scale( generator ) - 1.0);
    return EXIT_SUCCESS;
 }
 
-int TEM_NS::random::unitdisplacement1D( double& xx, const double& fwd, 
+int SPF_NS::random::unitdisplacement1D( double& xx, const double& fwd, 
                                     const double& bkwd)
 {
    if (fwd + bkwd > 1.0) 
@@ -69,13 +69,13 @@ int TEM_NS::random::unitdisplacement1D( double& xx, const double& fwd,
    return EXIT_SUCCESS;
 }
 
-bool TEM_NS::random::bernoulli( const double& pp )
+bool SPF_NS::random::bernoulli( const double& pp )
 {
    std::bernoulli_distribution bb( pp );
    return bb( generator );
 }
 
-//int TEM_NS::random::orientation3D( double& xx, double& yy, double& zz)
+//int SPF_NS::random::orientation3D( double& xx, double& yy, double& zz)
 //{
 //   double x1, x2, sqrt_x1_x2;
 //   x1 = uniform_coord(generator);

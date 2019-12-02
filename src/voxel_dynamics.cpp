@@ -11,6 +11,10 @@
 
 #include "voxel_dynamics.hpp"
 
+#ifndef ONESIXTH 
+#define ONESIXTH 0.16666666666666666666666666666666666666666666666666666667
+#endif
+
 int SPF_NS::conserved_gaussian_flux_single_distribution_milstein(
    std::vector<double>& local_change, // must be same size as local_field
    const std::vector<double>& local_field,
@@ -277,27 +281,27 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_gradient_milstein(
    // TODO: establish reasoning for these choices ... !
 
    drift[0] = rate_scale_factor 
-                  * (1.0/6.0)
+                  * ONESIXTH 
                   * (local_field[idx] - local_field[neigh_idx_x_a]);
    //drift[1] = rate_scale_factor 
    //               * (local_field[idx] - local_field[neigh_idx_x_b]);
    drift[2] = rate_scale_factor 
-                  * (1.0/6.0)
+                  * ONESIXTH 
                   * (local_field[idx] - local_field[neigh_idx_y_a]);
    //drift[3] = rate_scale_factor 
    //               * (local_field[idx] - local_field[neigh_idx_y_b]);
    drift[4] = rate_scale_factor 
-                  * (1.0/6.0)
+                  * ONESIXTH 
                   * (local_field[idx] - local_field[neigh_idx_z_a]);
    //drift[5] = rate_scale_factor 
    //               * (local_field[idx] - local_field[neigh_idx_z_b]);
 
-   jump_rate[0] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_rate[1] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   jump_rate[2] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_rate[3] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   jump_rate[4] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_rate[5] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_rate[0] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_rate[1] = ONESIXTH * rate_scale_factor * local_field[idx];
+   jump_rate[2] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_rate[3] = ONESIXTH * rate_scale_factor * local_field[idx];
+   jump_rate[4] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_rate[5] = ONESIXTH * rate_scale_factor * local_field[idx];
 
    jump_variance[0] = jump_rate[0];
    //jump_variance[1] = jump_rate[1];
@@ -325,21 +329,21 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_gradient_milstein(
       = drift[0] * dt                              // f(x) dt
          + jump_rate[0] * dw[0]                    // + g(x) dw
          + 0.5 * jump_rate[0]                      // + 0.5 g(x) 
-           * (1.0/6.0)*rate_scale_factor           // * g'(x)
+           * ONESIXTH * rate_scale_factor           // * g'(x)
            * ( dw[0] * dw[0] - dt);                // *( (dw)^2 - dt )
    //exiting_current_voxel_x_b
    exiting_current_voxel_y_a 
       = drift[2] * dt                              // f(x) dt
          + jump_rate[2] * dw[2]                    // + g(x) dw
          + 0.5 * jump_rate[2]                      // + 0.5 g(x)
-           * (1.0/6.0)*rate_scale_factor           // *  g'(x)
+           * ONESIXTH * rate_scale_factor           // *  g'(x)
            * ( dw[2] * dw[2] - dt);                // *( (dw)^2 - dt )
    //exiting_current_voxel_y_b
    exiting_current_voxel_z_a 
       = drift[4] * dt                              // f(x) dt
          + jump_rate[4] * dw[4]                    // + g(x) dw
          + 0.5 * jump_rate[4]                      // + 0.5 g(x) 
-           * (1.0/6.0)*rate_scale_factor           // * g'(x)
+           * ONESIXTH * rate_scale_factor           // * g'(x)
            * ( dw[4] * dw[4] - dt);                // *( (dw)^2 - dt )
    //exiting_current_voxel_z_b
    
@@ -470,12 +474,12 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
    //jump_mean[5] = rate_scale_factor 
    //               * (local_field[idx] - local_field[neigh_idx_z_b]);
 
-   jump_variance[0] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_variance[1] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   jump_variance[2] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_variance[3] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   jump_variance[4] = (1.0/6.0)*rate_scale_factor * local_field[idx];
-   //jump_variance[5] = (1.0/6.0)*rate_scale_factor * local_field[idx];
+   jump_variance[0] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_variance[1] = ONESIXTH * rate_scale_factor * local_field[idx];
+   jump_variance[2] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_variance[3] = ONESIXTH * rate_scale_factor * local_field[idx];
+   jump_variance[4] = ONESIXTH * rate_scale_factor * local_field[idx];
+   //jump_variance[5] = ONESIXTH * rate_scale_factor * local_field[idx];
 
    std::normal_distribution<double>
          gd_x_a( jump_mean[0], jump_variance[0] );
@@ -565,7 +569,7 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
 }
 
 
-int SPF_NS::conserved_jump_flux( 
+int SPF_NS::conserved_jump_flux_single_distribution( 
    std::vector<double>& local_change, // must be same size as local_field
    const std::vector<double>& local_field,
    SPF_NS::random& rr,
@@ -618,8 +622,6 @@ int SPF_NS::conserved_jump_flux(
    //   std::cout << "warning: subinterval not updated : "
    //      << rr.get_subinterval() << " != " <<  jump_rate * dt * exp( -1.0*jump_rate*dt)  << std::endl; // debug
    // evaluate jump magnitude in each direction
-
-   //SPF_NS::random rr2( jump_rate, dt);
 
    //jump_magnitude_x_a = rr.poisson_event_count( rr.generator );
    //jump_rate = rate_scale_factor * (local_field[idx] - local_change[idx]);
@@ -774,6 +776,272 @@ int SPF_NS::conserved_jump_flux(
 
    return EXIT_SUCCESS;
 }
+
+int SPF_NS::conserved_jump_flux_separate_distributions( 
+   std::vector<double>& local_change, // must be same size as local_field
+   const std::vector<double>& local_field,
+   SPF_NS::random& rr,
+   const std::vector<double>& jump_rates,  // 6 elements
+   const double& dt,
+   const size_t& idx,
+   const std::vector<size_t>& neigh_idxs,  // 6 elements
+   const int& Ny,
+   const int& Nz
+   )
+{
+   // assuming periodic boundary conditions
+   // jump_rates must be evaluated before calling 
+
+   /////////////////////////////////////////////////////////
+   // evaluate local fluxes and changes due to jump processes
+   // using local_field[idx]
+   // and its neighbors indexed by neigh_x/y/z_idx[] 
+   // and accumulate field changes to 
+   //  local_change[idx]
+   //  and its neighbors local_change[neigh_x/y/z_idx[]]]
+
+
+   double jump_magnitudes[6]; // assumes ndims == 3
+   for (size_t ii=0; ii < 6; ++ii) jump_magnitudes[ii] = 0;
+
+   //double change_to_current_voxel; change_to_current_voxel = 0;
+   int exiting_current_voxel; exiting_current_voxel = 0;
+
+   size_t dest_idx;
+
+   // evaluate jump rates in each direction
+   //for( size_t ii=0; ii < 6; ++ii)
+   //{
+   //   jump_rate[ii] = rate_scale_factor   
+   //                  * (local_field[idx]);// + change_to_current_voxel);
+   //}
+   
+   // randomize the order in which walkers are distributed to neighbors
+   std::vector<size_t> neigh_idx_scrambled(6,0);
+   std::vector<double> rand_decimals1(6,0);
+   std::vector<double> rand_decimals2(6,0);
+
+   bool randomized_flag; randomized_flag = true;
+   std::uniform_real_distribution<double> rand_decimal(0,1);
+   do {
+      for( size_t ii=0; ii < 6; ++ii) 
+      {
+         rand_decimals1[ii] = rand_decimal( rr.generator );
+         rand_decimals2[ii] = rand_decimals1[ii];
+      }
+      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+
+      // check that no number was drawn twice by rand_decimal()
+      std::vector<double>::iterator decimals_itr;
+      decimals_itr = std::unique(rand_decimals1.begin(), 
+                                 rand_decimals1.end() );
+      rand_decimals1.resize( 
+               std::distance( rand_decimals1.begin(), decimals_itr) );
+      if ( rand_decimals1.size() != 6 )
+      {
+         randomized_flag = false;
+      }
+   }
+   while ( ! randomized_flag );
+
+   for( size_t ii=0; ii < 6; ++ii)
+   {
+      for( size_t jj=0; jj < 6; ++jj)
+      {
+            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+            {
+               neigh_idx_scrambled[jj] = ii;
+               continue;
+            }
+      }
+   }
+
+   // debug
+   //std::cout << "neigh_idx_scramble[] : " ;
+   //for( size_t ii=0; ii < 6; ++ii) 
+   //{
+   //   std::cout << neigh_idx_scrambled[ii] << ", ";
+   //}
+   //std::cout << std::endl;
+   // end debug
+
+   for( std::vector<size_t>::const_iterator 
+         neigh_idx_itr = neigh_idx_scrambled.begin(); 
+         neigh_idx_itr != neigh_idx_scrambled.end(); 
+         ++neigh_idx_itr)
+         //size_t ii=0; ii < neigh_idx_scrambled.size(); ++ii)
+   {
+      if( jump_rates[ *neigh_idx_itr ] > 0.0)
+      {
+         std::poisson_distribution<int> 
+               pd( dt * jump_rates[*neigh_idx_itr] );
+
+         jump_magnitudes[*neigh_idx_itr] = pd( rr.generator );
+
+         if( (exiting_current_voxel + jump_magnitudes[*neigh_idx_itr])
+               >= local_field[idx] )
+         {
+            jump_magnitudes[*neigh_idx_itr] =
+               local_field[idx] - exiting_current_voxel ;
+            if ( jump_magnitudes[*neigh_idx_itr] < 0.0 ) 
+            {
+               jump_magnitudes[*neigh_idx_itr] = 0.0;
+               exiting_current_voxel = local_field[idx];
+            }
+         }
+         exiting_current_voxel += jump_magnitudes[*neigh_idx_itr];
+         local_change[*neigh_idx_itr] += jump_magnitudes[*neigh_idx_itr];
+      }
+   }
+   local_change[idx] -= exiting_current_voxel;
+
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::conserved_gaussian_flux_separate_distributions( 
+   std::vector<double>& local_change, // must be same size as local_field
+   const std::vector<double>& local_field,
+   SPF_NS::random& rr,
+   const std::vector<double>& jump_rates,  // 6 elements
+   const std::vector<double>& jump_rate_derivatives,  // 6 elements
+   const double& dt,
+   const size_t& idx,
+   const std::vector<size_t>& neigh_idxs,  // 6 elements
+   const int& Ny,
+   const int& Nz
+   )
+{
+   // assuming periodic boundary conditions
+   // jump_rates must be evaluated before calling 
+   double sqrtdt; sqrtdt = sqrt(dt);
+
+   /////////////////////////////////////////////////////////
+   // evaluate local fluxes and changes due to jump processes
+   // using local_field[idx]
+   // and its neighbors indexed by neigh_x/y/z_idx[] 
+   // and accumulate field changes to 
+   //  local_change[idx]
+   //  and its neighbors local_change[neigh_x/y/z_idx[]]]
+
+
+   double jump_magnitudes[6]; // assumes ndims == 3
+   for (size_t ii=0; ii < 6; ++ii) jump_magnitudes[ii] = 0;
+
+   //double change_to_current_voxel; change_to_current_voxel = 0;
+   int exiting_current_voxel; exiting_current_voxel = 0;
+
+   size_t dest_idx;
+
+   // evaluate jump rates in each direction
+   //for( size_t ii=0; ii < 6; ++ii)
+   //{
+   //   jump_rate[ii] = rate_scale_factor   // TODO: change to be specific to physical phenomenon; pass rates into this function
+   //                  * (local_field[idx]);// + change_to_current_voxel);
+   //}
+   
+   // randomize the order in which walkers are distributed to neighbors
+   std::vector<size_t> neigh_idx_scrambled(6,0);
+   std::vector<double> rand_decimals1(6,0);
+   std::vector<double> rand_decimals2(6,0);
+
+   bool randomized_flag; randomized_flag = true;
+   std::uniform_real_distribution<double> rand_decimal(0,1);
+   do {
+      for( size_t ii=0; ii < 6; ++ii) 
+      {
+         rand_decimals1[ii] = rand_decimal( rr.generator );
+         rand_decimals2[ii] = rand_decimals1[ii];
+      }
+      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+
+      // check that no number was drawn twice by rand_decimal()
+      std::vector<double>::iterator decimals_itr;
+      decimals_itr = std::unique(rand_decimals1.begin(), 
+                                 rand_decimals1.end() );
+      rand_decimals1.resize( 
+               std::distance( rand_decimals1.begin(), decimals_itr) );
+      if ( rand_decimals1.size() != 6 )
+      {
+         randomized_flag = false;
+      }
+   }
+   while ( ! randomized_flag );
+
+   for( size_t ii=0; ii < 6; ++ii)
+   {
+      for( size_t jj=0; jj < 6; ++jj)
+      {
+            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+            {
+               neigh_idx_scrambled[jj] = ii;
+               continue;
+            }
+      }
+   }
+
+   // debug
+   //std::cout << "neigh_idx_scramble[] : " ;
+   //for( size_t ii=0; ii < 6; ++ii) 
+   //{
+   //   std::cout << neigh_idx_scrambled[ii] << ", ";
+   //}
+   //std::cout << std::endl;
+   // end debug
+
+   std::normal_distribution<double> gd( 0.0, 1.0);
+   for( std::vector<size_t>::const_iterator 
+         neigh_idx_itr = neigh_idx_scrambled.begin(); 
+         neigh_idx_itr != neigh_idx_scrambled.end(); 
+         ++neigh_idx_itr)
+         //size_t ii=0; ii < neigh_idx_scrambled.size(); ++ii)
+   {
+      if( jump_rates[ *neigh_idx_itr ] > 0.0)
+      {
+
+         // Ito
+         //jump_magnitudes[*neigh_idx_itr]
+         //   = jump_rates[*neigh_idx_itr] * dt
+         //      + jump_rates[*neigh_idx_itr] * sqrtdt * gd(rr.generator);
+
+         // Stratonovich   (a(x) = mean, b(x) = variance of B(t))
+         //    current_state  + a(x)*dt + 0.5* b'(x)*b(x)*dt + b(x)dB(s,x)
+         // b(x) = (1/6)*rate_scale_factor*x
+         jump_magnitudes[*neigh_idx_itr] // stratonovich
+            = jump_rates[*neigh_idx_itr] * dt // drift
+               + (0.5 *jump_rate_derivatives[*neigh_idx_itr] 
+                  *jump_rates[*neigh_idx_itr] * dt)   // W-Z correction
+               + (jump_rates[*neigh_idx_itr] 
+                     * sqrtdt * gd(rr.generator)); // Ito of dB
+
+         if( (exiting_current_voxel + jump_magnitudes[*neigh_idx_itr])
+               >= local_field[idx] )
+         {
+            jump_magnitudes[*neigh_idx_itr] =
+               local_field[idx] - exiting_current_voxel ;
+            if ( jump_magnitudes[*neigh_idx_itr] < 0.0 ) 
+            {
+               jump_magnitudes[*neigh_idx_itr] = 0.0;
+               exiting_current_voxel = local_field[idx];
+            }
+         }
+         if ( jump_magnitudes[*neigh_idx_itr] < 0)
+         {
+            jump_magnitudes[*neigh_idx_itr] = 0;
+         }
+         exiting_current_voxel += jump_magnitudes[*neigh_idx_itr];
+         local_change[*neigh_idx_itr] += jump_magnitudes[*neigh_idx_itr];
+      }
+      else
+      {
+         std::cout << "Warning: jump_rates[] < 0 somehow" // debug
+            << std::endl; // debug
+      }
+   }
+   local_change[idx] -= exiting_current_voxel;
+
+   return EXIT_SUCCESS;
+}
+
 
 
 double SPF_NS::laplacian(

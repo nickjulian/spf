@@ -12,11 +12,41 @@
 #include <iostream> // cout endl;
 //#include <cstdlib>   // EXIT_SUCCESS & EXIT_FAILURE
 
-#define ONESIXTH 0.16666666666666666666666666666666666666666666666666666666
+#ifndef ONESIXTH 
+#define ONESIXTH 0.16666666666666666666666666666666666666666666666666666667
+#endif
 
-double TEM_NS::marcusRK4( 
-                     double (*integrand)(const double& tt, const double& yy,
-                                          const double& poissonJump), 
+int SPF_NS::marcusIntegral( double (*marcusIntegrand)(const double& tt,
+                                          const double& yy,
+                                          const double& dP), 
+                     const double& rk_dt,    // increment of unit interval
+                     const double& y0,    // path.back()
+                     const double& t0,    // t_n, t_{n+1}=t_n + dt
+                     const double& dP,// Y_{k} size of jump before marcus
+                     double& jumpDestination)
+{
+   jumpDestination = y0;
+   if (( rk_dt >= 1.0) || (rk_dt <= 0))
+   {
+      std::cout << "Error: runge-kutta increment rk_dt >=1 or <=0" 
+               << std::endl;
+      return EXIT_FAILURE;
+   }
+   for( double tt=0.0; tt < 1.0; tt += rk_dt ) 
+   {
+      jumpDestination = marcusRK4( marcusIntegrand,
+                                    rk_dt,
+                                    jumpDestination,
+                                    tt,
+                                    dP);
+   }
+   return EXIT_SUCCESS;
+}
+
+double SPF_NS::marcusRK4( 
+                     double (*integrand)(const double& tt, 
+                                          const double& yy,
+                                          const double& poissonJump),// Y_k
                      const double& dt, 
                      const double& y0, 
                      const double& t0, 

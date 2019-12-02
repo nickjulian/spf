@@ -15,7 +15,7 @@ using std::endl;
 using std::cerr;
 using std::setw;
 using namespace std;
-using namespace TEM_NS;
+using namespace SPF_NS;
 
 
 // integrand specific to this Langevin equation, b(z)=z , 
@@ -78,8 +78,8 @@ int main( int argc, char* argv[])
    // file will contain times, jump magnitudes, state values
    outFilePrefix = outFilePrefix + "_xdP" + ".h5";
 
-   TEM_NS::random rr( rate, dt);
-   //TEM_NS::random rr;
+   SPF_NS::random rr( rate, dt);
+   //SPF_NS::random rr;
 
    // a function pointer to pass the integrand to Runge-Kutta
    //double (*zz)(const double& tt, const double& yy, jump);
@@ -131,7 +131,12 @@ int main( int argc, char* argv[])
                itr != unitInterval.end(); ++itr)
          {
             //cout << "t: " << *itr << endl;//debug
-            jumpRK = marcusRK4( integrand, rk_dt, jumpRK, *itr, jumpL);
+            // iterate over unit interval increments
+            jumpRK = marcusRK4( integrand, 
+                                 rk_dt, // time increment of unit interval
+                                 jumpRK,  // y_n for rk4 
+                                 *itr,    // t_n for rk4
+                                 jumpL);  // Y_k
             //rktest = marcusRK4( integrand, rk_dt, rktest, *itr, 1.0);
             //cout << "rktest: " << rktest/rk_dt << endl;
          }

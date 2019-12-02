@@ -17,7 +17,7 @@
 //#define KB 1.380649E-23
 //#endif
 
-namespace TEM_NS
+namespace SPF_NS
 {
    class random
    {
@@ -44,6 +44,17 @@ namespace TEM_NS
          std::poisson_distribution<int> poisson_event_count;
 
          // CONSTRUCTOR
+         random( )
+         {
+            generator = std::mt19937(rd());
+            uniform_scale
+               = std::uniform_real_distribution<double>( 0.0, 1.0);
+            normal_distance 
+               = std::normal_distribution<double>( 0.0, 1.0);
+            subinterval = 1.0 * 1.0 * exp( -1.0 * 1.0 * 1.0 );
+            poisson_event_count
+               = std::poisson_distribution<int>( 1.0 );
+         }
          random( const double& r, const double& dt )
          {
             generator = std::mt19937(rd());

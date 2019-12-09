@@ -45,6 +45,9 @@ spf-poisson-double-well: $(OBJS)
 spf-gaussian-double-well: $(OBJS)
 	$(CXX) $(ROOT)/src/spf_pure_gaussian_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_double_well.x
 
+spf-gaussian-double-well-ito: $(OBJS)
+	$(CXX) $(ROOT)/src/spf_pure_gaussian_double_well_ito.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_double_well_ito.x
+
 stats: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/statsHDF5.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_stats.x
 

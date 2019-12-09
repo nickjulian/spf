@@ -87,10 +87,11 @@ int main( int argc, char* argv[])
    int time_step; time_step = 0;
    int write_period; write_period = 1;
    double time, dt; time = 0; dt = 1;
-   double rate_scale_factor; rate_scale_factor = 1.0;
+   //double rate_scale_factor; rate_scale_factor = 1.0;
 
    // TODO: erase this and read Nt from the cmdline
    double diffusivityT; diffusivityT = 3.0E-4;
+   int Nv; Nv = 100;
 
    ////////////////////////////////////////////////////////////////////
 
@@ -105,7 +106,7 @@ int main( int argc, char* argv[])
             args,
             dt,
             Nt,
-            rate_scale_factor,
+            //rate_scale_factor,
             write_period,
             flag_calcstat,
             output_prefix,
@@ -333,7 +334,7 @@ int main( int argc, char* argv[])
       log_file << "-i " << inputFileName << endl;
       log_file << "-Nt " << Nt << endl;
       log_file << "-dt " << dt << endl;
-      log_file << "-r " << rate_scale_factor << endl;
+      //log_file << "-r " << rate_scale_factor << endl;
       log_file << "-wp " << write_period << endl;
       log_file << endl;
       if ( flag_calcstat ) log_file << "-stat " << endl;
@@ -570,6 +571,7 @@ int main( int argc, char* argv[])
                // indices wrt local_change
                size_t idx; 
                idx = kk + Nz*(jj + Ny*ii);
+               //std::cout << "phi_local[" << idx << "]: " << phi_local[idx] << std::endl;// debug
 
                identify_local_neighbors(
                      neigh_idxs[0], 
@@ -606,9 +608,13 @@ int main( int argc, char* argv[])
                   simple_identity_rate(
                         jump_rates[ii],
                         phi_local,
-                        rate_scale_factor,
+                        //rate_scale_factor,
                         idx
                         );
+                  // debug
+                //  std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
+                //     << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
+                  // end debug
                }
 
                // evaluate stochastic changes to this and neighboring cells
@@ -617,9 +623,11 @@ int main( int argc, char* argv[])
                      phi_local,
                      rr,
                      jump_rates,
-                     rate_scale_factor,
+                     dt,
+                     //rate_scale_factor,
                      idx,
                      neigh_idxs,
+                     Nv,
                      Ny,
                      Nz
                      );
@@ -833,6 +841,24 @@ int main( int argc, char* argv[])
             {
                phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
                   += phi_local_change[ kk + Nz*(jj + Ny*ii) ];
+               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] > Nv) 
+               {
+                  std::cout << "node " << mynode 
+                     << "warning : phi_local[" 
+                     << kk + Nz*(jj + Ny*(ii)) << "] == "
+                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
+                     << " >Nv; user should reduce dt; setting this phi_local[]=Nv" << std::endl;
+                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = Nv;
+               }
+               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] < 0) 
+               {
+                  std::cout << "node " << mynode 
+                     << "warning : phi_local[" 
+                     << kk + Nz*(jj + Ny*(ii)) << "] == "
+                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
+                     << " <0; user should reduce dt; setting this phi_local[]=0" << std::endl;
+                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = 0;
+               }
             }
          }
       }

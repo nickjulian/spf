@@ -16,61 +16,80 @@
 int SPF_NS::simple_identity_rate(  // rate_scale_factor * local_field[idx]
       double& local_rate,  // output
       const std::vector<double>& local_field,
-      const double& rate_scale_factor,
+      //const double& rate_scale_factor,
       const size_t& idx
       )
 {
-   local_rate = ONESIXTH * rate_scale_factor * local_field[idx];
+   if (local_field[idx] <= 0.0 ) local_rate = 0;
+   local_rate = ONESIXTH //* rate_scale_factor 
+                  * sqrt(local_field[idx]);
    return EXIT_SUCCESS;
 }
 
 int SPF_NS::simple_identity_rate_derivative( 
       double& local_rate_derivative,
       const std::vector<double>& local_field,
-      const double& rate_scale_factor,
+      //const double& rate_scale_factor,
       const size_t& idx
       )
 {
-   local_rate_derivative = ONESIXTH * rate_scale_factor;
+   if (local_field[idx] <= 0.0 ) 
+         local_rate_derivative = 100000000000000000000.0; 
+   //if (xx >= 1.0 ) return ONESIXTH * rate_scale_factor * 0.5;
+   local_rate_derivative = ONESIXTH //* rate_scale_factor 
+                              * 0.5/sqrt(local_field[idx]);
    return EXIT_SUCCESS;
 }
 
-int SPF_NS::double_well_tilted(
-      double& local_rate,  // output
+double SPF_NS::double_well_tilted(
+      //double* local_rate,  // output
       //const std::vector<double>& local_field,
       const double& xx, // local_field[idx],
-      const double& rate_scale_factor,
+      //const double& rate_scale_factor,
       const double& ww,
       const double& TT,
       const double& alpha
       //const size_t& idx
       )
 {
-   //double xx; xx = local_field[idx];
+   if (xx <= 0.0 ) return 0.0; // this is probably bad
+   if (xx >= 1.0 ) return 1E20;  // huge number
    // \omega(2x-1)+k_{B}T[\alpha ln(x/(1-x))+(alpha-1)/(1-x)]
-   local_rate = ww *(2*xx -1) + (8.617E-5)*TT*(
-         alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx));
-   return EXIT_SUCCESS;
+   return sqrt(ww *(2*xx -1) + (0.00008617)*TT*(
+               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)));
 }
 
-int SPF_NS::double_well_tilted_derivative(
-      double& local_rate_derivative, // output
+double SPF_NS::double_well_tilted_derivative(
+      //double& local_rate_derivative, // output
       //const std::vector<double>& local_field,
       const double& xx, // local_field[idx],
-      const double& rate_scale_factor,
+      //const double& rate_scale_factor,
       const double& ww,
       const double& TT,
       const double& alpha
       //const size_t& idx
       )
 {
+   if (xx <= 0.0 ) return 0.0; // this is probably bad
+   if (xx >= 1.0 ) return -1E20;  // huge negative number
    //double xx; xx = local_field[idx];
    // 2*\omega+k_{B}T[(\alpha/x) + (\alpha/(1-x)) - (\alpha -1)/((1-x)^{2})]
-   local_rate_derivative = 2*ww + (8.617E-5)*TT*(
-         (alpha/xx) + (alpha/(1-xx)) - (alpha -1)/((1-xx)*(1-xx))
-         );
-      
-   return EXIT_SUCCESS;
+   //if ( (xx == 0.0 ) || (xx == 1.0))
+   //   local_rate_derivative = 
+
+   //if ( (xx <= 0.0 ) || (xx >= 1.0))
+   //{
+   //   return xx;
+   //}
+   double sigma;
+   sigma = sqrt(ww *(2*xx -1) + (0.00008617)*TT*(
+               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)));
+
+   return ((0.5/sigma)
+      *(2.0*ww + (0.00008617)*TT*( 
+                                    (alpha/xx) + (alpha/(1.0-xx)) 
+                                    + (alpha -1.0)/((1.0-xx)*(1.0-xx))
+                                 )));
 }
 //int SPF_NS::double_well_tilted_ie(  // includes interface energy?
 //      double& local_rate,  // output

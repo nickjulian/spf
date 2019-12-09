@@ -21,6 +21,7 @@
 #include "writeHDF5c.hpp"
 #include "spf_communication.hpp"
 
+#include "stochastic_rates.hpp"
 #include "voxel_dynamics.hpp"
 
 #include "rand.hpp"
@@ -559,6 +560,8 @@ int main( int argc, char* argv[])
       // Local field doesn't change until after evaluating flux for 
       //  every voxel.
       
+      std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
+      std::vector<double> jump_rates(6,0);   // re-used in each iteration 
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
@@ -567,21 +570,15 @@ int main( int argc, char* argv[])
                // indices wrt local_change
                size_t idx; 
                idx = kk + Nz*(jj + Ny*ii);
-               size_t neigh_idx_x_a;   //[2];
-               size_t neigh_idx_x_b;   //[2];
-               size_t neigh_idx_y_a;   //[2];
-               size_t neigh_idx_y_b;   //[2];
-               size_t neigh_idx_z_a;   //[2];
-               size_t neigh_idx_z_b;   //[2];
+
                identify_local_neighbors(
-                     neigh_idx_x_a, 
-                     neigh_idx_x_b, 
-                     neigh_idx_y_a, 
-                     neigh_idx_y_b, 
-                     neigh_idx_z_a,
-                     neigh_idx_z_b,
+                     neigh_idxs[0], 
+                     neigh_idxs[1], 
+                     neigh_idxs[2], 
+                     neigh_idxs[3], 
+                     neigh_idxs[4],
+                     neigh_idxs[5],
                      ii, jj, kk,
-                     //Nx_total, 
                      Ny, Nz
                      );
 
@@ -603,23 +600,49 @@ int main( int argc, char* argv[])
                //      Nz
                //      );
 
-               conserved_jump_flux( 
+               // assign values to jump_rates[]
+               for( size_t ii=0; ii < 6; ++ii)
+               {
+                  double_well_tilted(
+                        jump_rates[ii],
+                        phi_local[idx],
+                        rate_scale_factor,
+                        ww,
+                        TT,
+                        tilt_alpha
+                        );
+               }
+
+               // evaluate stochastic changes to this and neighboring cells
+               conserved_jump_flux_separate_distributions( 
                      phi_local_change,
                      phi_local,
                      rr,
+                     jump_rates,
                      rate_scale_factor,
-                     dt,
                      idx,
-                     neigh_idx_x_a,
-                     neigh_idx_x_b,
-                     neigh_idx_y_a,
-                     neigh_idx_y_b,
-                     neigh_idx_z_a,
-                     neigh_idx_z_b,
-                     //Nx_total,
+                     neigh_idxs,
                      Ny,
                      Nz
                      );
+
+               //conserved_jump_flux_singl_distribution( 
+               //      phi_local_change,
+               //      phi_local,
+               //      rr,
+               //      rate_scale_factor,
+               //      dt,
+               //      idx,
+               //      neigh_idx_x_a,
+               //      neigh_idx_x_b,
+               //      neigh_idx_y_a,
+               //      neigh_idx_y_b,
+               //      neigh_idx_z_a,
+               //      neigh_idx_z_b,
+               //      //Nx_total,
+               //      Ny,
+               //      Nz
+               //      );
 
                //// heat equation
                ////  \frac{\partial T}{\partial t} = D_{T} \nabla^{2} T
@@ -676,13 +699,6 @@ int main( int argc, char* argv[])
                //      phi_local_change, 
                //      phi_local, 
                //      ii, jj, kk, Nx_total, Ny, Nz);
-
-               /////////////////////////////////////////////////////////
-               // TODO
-               // outward flux - Brownian motion
-               // outward flux - jump process
-               // non-conserved changes
-               /////////////////////////////////////////////////////////
             }
 
       /* end loop over voxels *****************************************/

@@ -87,15 +87,15 @@ int main( int argc, char* argv[])
    int time_step; time_step = 0;
    int write_period; write_period = 1;
    double time, dt; time = 0; dt = 1;
-   double rate_scale_factor; rate_scale_factor = 1.0;
+   //double rate_scale_factor; rate_scale_factor = 1.0;
 
    // TODO: erase this and read Nt from the cmdline
    double diffusivityT; diffusivityT = 3.0E-4;
 
-   double tilt_alpha; tilt_alpha = 0.998; // when 1, potential isn't tilted
-   double ww; ww = 0; // order energy
+   double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
+   double ww; ww = -0.1; // order energy
    double TT; TT = 540; // order energy
-   int Nv; Nv = 250; // number of walkers possible in a voxel
+   //int Nv; Nv = 1000; // number of walkers possible in a voxel
 
    ////////////////////////////////////////////////////////////////////
 
@@ -110,7 +110,7 @@ int main( int argc, char* argv[])
             args,
             dt,
             Nt,
-            rate_scale_factor,
+            //rate_scale_factor,
             write_period,
             flag_calcstat,
             output_prefix,
@@ -338,7 +338,7 @@ int main( int argc, char* argv[])
       log_file << "-i " << inputFileName << endl;
       log_file << "-Nt " << Nt << endl;
       log_file << "-dt " << dt << endl;
-      log_file << "-r " << rate_scale_factor << endl;
+      //log_file << "-r " << rate_scale_factor << endl;
       log_file << "-wp " << write_period << endl;
       log_file << endl;
       if ( flag_calcstat ) log_file << "-stat " << endl;
@@ -576,6 +576,7 @@ int main( int argc, char* argv[])
                // indices wrt local_change
                size_t idx; 
                idx = kk + Nz*(jj + Ny*ii);
+               //std::cout << "phi_local[" << idx << "]: " << phi_local[idx] << std::endl;// debug
 
                identify_local_neighbors(
                      neigh_idxs[0], 
@@ -609,23 +610,36 @@ int main( int argc, char* argv[])
                // assign values to jump_rates[]
                for( size_t ii=0; ii < 6; ++ii)
                {
-                  double_well_tilted(
-                        jump_rates[ii],
-                        phi_local[idx],
-                        rate_scale_factor,
-                        ww,
-                        TT,
-                        tilt_alpha
-                        );
+                  if ( phi_local[idx] > 0)
+                  {
+                     jump_rates[ii] =
+                        double_well_tilted(
+                           phi_local[idx],
+                           //rate_scale_factor,
+                           ww,
+                           TT,
+                           tilt_alpha
+                           ) - 0.5*0.00008617*TT*ww;
 
-                  double_well_tilted_derivative(
-                        jump_rate_derivatives[ii],
-                        phi_local[idx],
-                        rate_scale_factor,
-                        ww,
-                        TT,
-                        tilt_alpha
-                        );
+                     jump_rate_derivatives[ii] = 
+                        double_well_tilted_derivative(
+                           //&jump_rate_derivatives[ii],
+                           phi_local[idx],
+                           //rate_scale_factor,
+                           ww,
+                           TT,
+                           tilt_alpha
+                           );
+                     // debug
+                     //std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
+                     //   << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
+                     // end debug
+                  }
+                  else
+                  {
+                     jump_rates[ii] = 0;
+                     jump_rate_derivatives[ii] = 0;
+                  }
                }
 
                // evaluate stochastic changes to this and neighboring cells
@@ -635,7 +649,8 @@ int main( int argc, char* argv[])
                      rr,
                      jump_rates,
                      jump_rate_derivatives,
-                     rate_scale_factor,
+                     dt,
+                     //rate_scale_factor,
                      idx,
                      neigh_idxs,
                      Ny,
@@ -851,6 +866,24 @@ int main( int argc, char* argv[])
             {
                phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
                   += phi_local_change[ kk + Nz*(jj + Ny*ii) ];
+               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] > 1.0) 
+               {
+                  std::cout << "node " << mynode 
+                     << "warning : phi_local[" 
+                     << kk + Nz*(jj + Ny*(ii)) << "] == "
+                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
+                     << " >1; user should reduce dt; setting this phi_local[]=1" << std::endl;
+                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = 1.0;
+               }
+               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] < 0.0) 
+               {
+                  std::cout << "node " << mynode 
+                     << "warning : phi_local[" 
+                     << kk + Nz*(jj + Ny*(ii)) << "] == "
+                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
+                     << " <0; user should reduce dt; setting this phi_local[]=0" << std::endl;
+                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = 0.0;
+               }
             }
          }
       }

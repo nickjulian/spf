@@ -92,6 +92,11 @@ int main( int argc, char* argv[])
    // TODO: erase this and read Nt from the cmdline
    double diffusivityT; diffusivityT = 3.0E-4;
 
+   double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
+   double ww; ww = -0.1; // order energy
+   double TT; TT = 540; // order energy
+   int Nv; Nv = 250; // number of walkers possible in a voxel
+
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -571,6 +576,7 @@ int main( int argc, char* argv[])
                // indices wrt local_change
                size_t idx; 
                idx = kk + Nz*(jj + Ny*ii);
+               //std::cout << "phi_local[" << idx << "]: " << phi_local[idx] << std::endl;// debug
 
                identify_local_neighbors(
                      neigh_idxs[0], 
@@ -604,27 +610,40 @@ int main( int argc, char* argv[])
                // assign values to jump_rates[]
                for( size_t ii=0; ii < 6; ++ii)
                {
-                  double_well_tilted(
-                        jump_rates[ii],
-                        phi_local[idx],
-                        rate_scale_factor,
-                        ww,
-                        TT,
-                        alpha
-                        );
+                  if ( phi_local[idx] > 0)
+                  {
+                     jump_rates[ii] =
+                        double_well_tilted(
+                           phi_local[idx],
+                           rate_scale_factor,
+                           ww,
+                           TT,
+                           tilt_alpha
+                           ) - 0.5*0.00008617*TT*ww;
 
-                  double_well_tilted_derivative(
-                        jump_rate_derivatives[ii],
-                        phi_local[idx],
-                        rate_scale_factor,
-                        ww,
-                        TT,
-                        tilt_alpha
-                        );
+                     jump_rate_derivatives[ii] = 
+                        double_well_tilted_derivative(
+                           //&jump_rate_derivatives[ii],
+                           phi_local[idx],
+                           rate_scale_factor,
+                           ww,
+                           TT,
+                           tilt_alpha
+                           );
+                     // debug
+                     //std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
+                     //   << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
+                     // end debug
+                  }
+                  else
+                  {
+                     jump_rates[ii] = 0;
+                     jump_rate_derivatives[ii] = 0;
+                  }
                }
 
                // evaluate stochastic changes to this and neighboring cells
-               conserved_gaussian_flux_separate_distributions( 
+               conserved_gaussian_flux_separate_distributions_ito( 
                      phi_local_change,
                      phi_local,
                      rr,

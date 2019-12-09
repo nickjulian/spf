@@ -77,13 +77,13 @@ int SPF_NS::update_ghosts(
                0, // tag identifies which message to receive from source
                neighbors_comm, 
                &halo_requests[0]);
-   MPI_Irecv( &data[(Nx_local+1)*Ny*Nz], 
+   MPI_Irecv( &data[(Nx_local+1)*Ny*Nz],//TODO: should this be Nx_local+2 ?
                Ny*Nz, MPI_DOUBLE, 
                neighbor_x_higher, 
                1,// lower neighbor receives from higher neighbor with tag 1
                neighbors_comm, &halo_requests[1]);
    //MPI_Isend( &phi_local[0 +  Nx_local*Ny ],
-   MPI_Isend( &data[(Nx_local)*Ny*Nz ],
+   MPI_Isend( &data[(Nx_local)*Ny*Nz ],   //TODO: Nx_local+1 ??
                Ny*Nz, MPI_DOUBLE, 
                neighbor_x_higher, // destination node rank
                0, // tag

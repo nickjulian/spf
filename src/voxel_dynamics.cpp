@@ -916,8 +916,8 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
    std::vector<double>& local_change, // must be same size as local_field
    const std::vector<double>& local_field,
    SPF_NS::random& rr,
-   const std::vector<double>& jump_rates,  // 6 elements
-   const std::vector<double>& jump_rate_derivatives,  // 6 elements
+   const std::vector<double>& jump_rates_sqrt,  // 6 elements
+   const std::vector<double>& jump_rate_sqrt_derivatives,  // 6 elements
    const double& dt,
    const size_t& idx,
    const std::vector<size_t>& neigh_idxs,  // 6 elements
@@ -1009,7 +1009,7 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
          ++neigh_num_itr)
          //size_t ii=0; ii < neigh_num_scrambled.size(); ++ii)
    {
-      if( jump_rates[ *neigh_num_itr ] > 0.0)
+      if( jump_rates_sqrt[ *neigh_num_itr ] > 0.0)
       {
 
          // Ito
@@ -1021,11 +1021,11 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
          //    current_state  + a(x)*dt + 0.5* b'(x)*b(x)*dt + b(x)dB(s,x)
          // b(x) = (1/6)*rate_scale_factor*x
          jump_magnitudes[*neigh_num_itr] // stratonovich
-            = (jump_rates[*neigh_num_itr] 
-                  * jump_rates[*neigh_num_itr]) * dt // drift is sigma^2
-               + (0.5 *jump_rate_derivatives[*neigh_num_itr] 
-                  *jump_rates[*neigh_num_itr] * dt)   // W-Z correction
-               + (jump_rates[*neigh_num_itr]    
+            = (jump_rates_sqrt[*neigh_num_itr] 
+                  * jump_rates_sqrt[*neigh_num_itr]) *dt //drift is sigma^2
+               + (0.5 *jump_rate_sqrt_derivatives[*neigh_num_itr] 
+                  *jump_rates_sqrt[*neigh_num_itr] * dt) // W-Z correction
+               + (jump_rates_sqrt[*neigh_num_itr]    
                //+ (sqrt(jump_rates[*neigh_num_itr])  // sqrt incorporated
                      * sqrtdt * gd(rr.generator)); // Ito of dB
 

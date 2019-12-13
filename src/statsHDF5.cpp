@@ -129,11 +129,11 @@ int main( int argc, char* argv[])
    {
       if ( time_step % write_period == 0 )
       {
-         //group_name = "Step#" + std::to_string(time_step);
+         //group_name = "Step" + std::to_string(time_step);
          // convert time_step from into to string
          std::ostringstream sstime_step;
          sstime_step << time_step;
-         group_name = "Step#" + sstime_step.str();
+         group_name = "Step" + sstime_step.str();
          cout << "reading group " << group_name << endl; // debug
 
          /*-----------------------------------------------------------*/

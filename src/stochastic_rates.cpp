@@ -55,8 +55,8 @@ double SPF_NS::double_well_tilted(
    if (xx <= 0.0 ) return 0.0; // this is probably bad
    if (xx >= 1.0 ) return 1E20;  // huge number
    // \omega(2x-1)+k_{B}T[\alpha ln(x/(1-x))+(alpha-1)/(1-x)]
-   return sqrt(ww *(2*xx -1) + (0.00008617)*TT*(
-               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)));
+   return ww *(2*xx -1) + (0.00008617)*TT*(
+               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx));
 }
 
 double SPF_NS::double_well_tilted_derivative(

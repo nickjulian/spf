@@ -95,7 +95,6 @@ int main( int argc, char* argv[])
    double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
    double ww; ww = -0.1; // order energy
    double TT; TT = 540; // order energy
-   //int Nv; Nv = 1000; // number of walkers possible in a voxel
 
    ////////////////////////////////////////////////////////////////////
 
@@ -566,8 +565,8 @@ int main( int argc, char* argv[])
       //  every voxel.
       
       std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
-      std::vector<double> jump_rates(6,0);   // re-used in each iteration 
-      std::vector<double> jump_rate_derivatives(6,0);
+      std::vector<double> jump_rates_sqrt(6,0);// re-used in each iteration 
+      std::vector<double> jump_rate_sqrt_derivatives(6,0);
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
@@ -607,12 +606,12 @@ int main( int argc, char* argv[])
                //      Nz
                //      );
 
-               // assign values to jump_rates[]
+               // assign values to jump_rates_sqrt[]
                for( size_t ii=0; ii < 6; ++ii)
                {
                   if ( phi_local[idx] > 0)
                   {
-                     jump_rates[ii] =
+                     jump_rates_sqrt[ii] =
                         double_well_tilted(
                            phi_local[idx],
                            //rate_scale_factor,
@@ -621,7 +620,12 @@ int main( int argc, char* argv[])
                            tilt_alpha
                            ) - 0.5*0.00008617*TT*ww;
 
-                     jump_rate_derivatives[ii] = 
+                     if ( jump_rates_sqrt[ii] > 0 )
+                        jump_rates_sqrt[ii] = sqrt(jump_rates_sqrt[ii]);
+                     else
+                        jump_rates_sqrt[ii] = 0.0;
+
+                     jump_rate_sqrt_derivatives[ii] = 
                         double_well_tilted_derivative(
                            //&jump_rate_derivatives[ii],
                            phi_local[idx],
@@ -637,8 +641,8 @@ int main( int argc, char* argv[])
                   }
                   else
                   {
-                     jump_rates[ii] = 0;
-                     jump_rate_derivatives[ii] = 0;
+                     jump_rates_sqrt[ii] = 0;
+                     jump_rate_sqrt_derivatives[ii] = 0;
                   }
                }
 
@@ -647,8 +651,8 @@ int main( int argc, char* argv[])
                      phi_local_change,
                      phi_local,
                      rr,
-                     jump_rates,
-                     jump_rate_derivatives,
+                     jump_rates_sqrt,
+                     jump_rate_sqrt_derivatives,
                      dt,
                      //rate_scale_factor,
                      idx,

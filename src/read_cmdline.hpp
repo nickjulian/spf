@@ -19,6 +19,9 @@
 #include <vector>
 #include <string>
 
+#include "flags.hpp" // int_flags
+#include "read_parameter_file.hpp"
+
 using std::cout;
 using std::endl;
 using std::cerr;
@@ -27,11 +30,12 @@ using namespace std;
 
 namespace SPF_NS
 {
+
 int read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
-      //double& rate_scale_factor,
+      int& Nv,
       int& write_period,
       bool& flag_calcstat,
       string& output_prefix,
@@ -45,8 +49,6 @@ int read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
-      //double& scalar_integrand,
-      //double& rate_scale_factor,
       int& write_period,
       bool& flag_calcstat,
       string& output_prefix,
@@ -60,23 +62,11 @@ int read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
-      //double& rate_scale_factor,
       int& write_period,
       bool& flag_calcstat,
       string& output_prefix,
       string& input_field_name
       );
 
-//int read_cmdline_options(
-//      const std::vector<string>& args,
-//      double& dt,
-//      int& Nt,
-//      //double& scalar_integrand,
-//      //double& rate_scale_factor,
-//      int& write_period,
-//      bool& flag_calcstat,
-//      string& output_prefix,
-//      string& input_field_name
-//      );
 } // SPF_NS
 #endif

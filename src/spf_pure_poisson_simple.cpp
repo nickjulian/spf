@@ -91,7 +91,7 @@ int main( int argc, char* argv[])
 
    // TODO: erase this and read Nt from the cmdline
    double diffusivityT; diffusivityT = 3.0E-4;
-   int Nv; Nv = 100;
+   int Nv; Nv = 1;
 
    ////////////////////////////////////////////////////////////////////
 
@@ -106,7 +106,7 @@ int main( int argc, char* argv[])
             args,
             dt,
             Nt,
-            //rate_scale_factor,
+            Nv,
             write_period,
             flag_calcstat,
             output_prefix,
@@ -333,12 +333,11 @@ int main( int argc, char* argv[])
       log_file << "-o " << output_prefix << endl;
       log_file << "-i " << inputFileName << endl;
       log_file << "-Nt " << Nt << endl;
+      log_file << "-Nv " << Nv << endl;
       log_file << "-dt " << dt << endl;
-      //log_file << "-r " << rate_scale_factor << endl;
       log_file << "-wp " << write_period << endl;
       log_file << endl;
       if ( flag_calcstat ) log_file << "-stat " << endl;
-      //log_file << endl;
       log_file.close();
    }
    ////////////////////////////////////////////////////////////////////
@@ -562,7 +561,13 @@ int main( int argc, char* argv[])
       //  every voxel.
       
       std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
+      std::vector<size_t> neigh_order(6,0);   // re-used in each iteration
       std::vector<double> jump_rates(6,0);   // re-used in each iteration 
+
+      std::uniform_real_distribution<double> rand_decimal(0,1);// for order
+      std::vector<double> rand_decimals1(6,0); // reused each reordering
+      std::vector<double> rand_decimals2(6,0); // reused each reordering
+
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
@@ -582,6 +587,14 @@ int main( int argc, char* argv[])
                      neigh_idxs[5],
                      ii, jj, kk,
                      Ny, Nz
+                     );
+
+               randomize_neighbor_order(
+                     neigh_order,
+                     rr,   // random generator
+                     rand_decimal,  // uniform_distribution<int>
+                     rand_decimals1, // reused vector, not useful outside
+                     rand_decimals2 // reused vector, not useful outside
                      );
 
                //conserved_gaussian_flux( 
@@ -627,6 +640,7 @@ int main( int argc, char* argv[])
                      //rate_scale_factor,
                      idx,
                      neigh_idxs,
+                     neigh_order,
                      Nv,
                      Ny,
                      Nz

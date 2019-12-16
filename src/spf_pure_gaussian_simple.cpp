@@ -561,8 +561,13 @@ int main( int argc, char* argv[])
       //  every voxel.
       
       std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
-      std::vector<double> jump_rates(6,0);   // re-used in each iteration 
-      std::vector<double> jump_rate_derivatives(6,0);
+      std::vector<size_t> neigh_order(6,0);   // re-used in each iteration
+      std::vector<double> jump_rates_sqrt(6,0);// re-used in each iteration
+      std::vector<double> jump_rate_sqrt_derivatives(6,0);
+
+      std::uniform_real_distribution<double> rand_decimal(0,1);// for order
+      std::vector<double> rand_decimals1(6,0); // reused each reordering
+      std::vector<double> rand_decimals2(6,0); // reused each reordering
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
@@ -582,6 +587,14 @@ int main( int argc, char* argv[])
                      neigh_idxs[5],
                      ii, jj, kk,
                      Ny, Nz
+                     );
+
+               randomize_neighbor_order(
+                     neigh_order,
+                     rr,   // random generator
+                     rand_decimal,  // uniform_distribution<int>
+                     rand_decimals1, // reused vector, not useful outside
+                     rand_decimals2 // reused vector, not useful outside
                      );
 
                //conserved_gaussian_flux( 
@@ -605,36 +618,50 @@ int main( int argc, char* argv[])
                // assign values to jump_rates[]
                for( size_t ii=0; ii < 6; ++ii)
                {
-                  simple_identity_rate(
-                        jump_rates[ii],
-                        phi_local,
-                        //rate_scale_factor,
-                        idx
-                        );
+                  if ( phi_local[idx] > 0)
+                  {
+                     simple_identity_rate(
+                           jump_rates_sqrt[ii],
+                           phi_local,
+                           //rate_scale_factor,
+                           idx
+                           );
 
-                  simple_identity_rate_derivative(
-                        jump_rate_derivatives[ii],
-                        phi_local,
-                        //rate_scale_factor,
-                        idx
-                        );
-                  // debug
-                  //std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
-                  //   << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
-                  // end debug
+                     if ( jump_rates_sqrt[ii] > 0 )
+                        jump_rates_sqrt[ii] = sqrt(jump_rates_sqrt[ii]);
+                     else
+                        jump_rates_sqrt[ii] = 0.0;
+
+                     simple_identity_rate_derivative(
+                           jump_rate_sqrt_derivatives[ii],
+                           phi_local,
+                           //rate_scale_factor,
+                           idx
+                           );
+                     // debug
+                     //std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
+                     //   << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
+                     // end debug
+                  }
+                  else
+                  {
+                     jump_rates_sqrt[ii] = 0;
+                     jump_rate_sqrt_derivatives[ii] = 0;
+                  }
                }
 
-               // evaluate stochastic changes to this and neighboring cells
+               //evaluate stochastic changes to this and neighboring cells
                conserved_gaussian_flux_separate_distributions( 
                      phi_local_change,
                      phi_local,
                      rr,
-                     jump_rates,
-                     jump_rate_derivatives,
+                     jump_rates_sqrt,
+                     jump_rate_sqrt_derivatives,
                      dt,
                      //rate_scale_factor,
                      idx,
                      neigh_idxs,
+                     neigh_order,
                      Ny,
                      Nz
                      );

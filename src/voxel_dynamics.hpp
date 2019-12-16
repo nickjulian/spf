@@ -17,6 +17,14 @@
 
 namespace SPF_NS
 {
+   int randomize_neighbor_order(
+         std::vector<size_t>& neigh_order,  // 6 elements
+         SPF_NS::random& rr, // random generator
+         std::uniform_real_distribution<double>& rand_decimal,
+         std::vector<double>& rand_decimals1, // reused vector, 6 elements
+         std::vector<double>& rand_decimals2 // reused vector, 6 elements
+         );
+
    //int conserved_gaussian_flux( 
    //int conserved_gaussian_flux_single_distribution_stratonovich(
    //int conserved_gaussian_flux_separate_distributions(
@@ -119,6 +127,7 @@ int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       const double& dt,
       const size_t& idx,
       const std::vector<size_t>& neigh_idxs,  // 6 elements
+      const std::vector<size_t>& neigh_order,  // 6 elements
       const int& Nv,
       const int& Ny,
       const int& Nz);
@@ -132,6 +141,7 @@ int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       const double& dt,
       const size_t& idx,
       const std::vector<size_t>& neigh_idxs,  // 6 elements
+      const std::vector<size_t>& neigh_order,  // 6 elements
       const int& Ny,
       const int& Nz);
 
@@ -144,6 +154,7 @@ int conserved_gaussian_flux_separate_distributions_gradient_milstein(
       const double& dt,
       const size_t& idx,
       const std::vector<size_t>& neigh_idxs,  // 6 elements
+      const std::vector<size_t>& neigh_order,  // 6 elements
       const int& Ny,
       const int& Nz);
 

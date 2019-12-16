@@ -12,7 +12,6 @@ int SPF_NS::read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
-      //double& rate_scale_factor,
       int& write_period,
       bool& flag_calcstat,
       string& output_prefix,
@@ -23,6 +22,34 @@ int SPF_NS::read_cmdline_options(
          args,
          dt,
          Nt,
+         //rate_scale_factor,
+         write_period,
+         flag_calcstat,
+         output_prefix,
+         input_field_name,
+         0, 0,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& write_period,
+      bool& flag_calcstat,
+      string& output_prefix,
+      string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
+   int Nv; Nv = 1;
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         Nv,
          //rate_scale_factor,
          write_period,
          flag_calcstat,
@@ -62,6 +89,7 @@ int SPF_NS::read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
+      int& Nv,
       //double& rate_scale_factor,
       int& write_period,
       bool& flag_calcstat,
@@ -73,63 +101,87 @@ int SPF_NS::read_cmdline_options(
       )
 {
    // define flags to check input requirements
-   bool flag_outprefix; flag_outprefix= false;
-   bool flag_input_field; flag_input_field = false;
-   bool flag_dt; flag_dt = false;
-   bool flag_Nt; flag_Nt = false;
-   //bool flag_r; flag_r = false;
-   bool flag_wp; flag_wp = false;
+   int_flags flags;
+   string parameter_filename;
 
+   // order of reading parameters allows cmdline to override those in file
    for ( size_t idx=1; idx < args.size(); idx++)
    {
-      if ( args[idx] == "-o" )
+      if ( args[idx] == "--parameter_file" )
+      {
+         istringstream( args[idx + 1] ) >> parameter_filename;
+         if ( read_parameter_file(
+                  parameter_filename,
+                  flags,
+                  dt,
+                  Nt,
+                  Nv,
+                  write_period,
+                  output_prefix,
+                  input_field_name,
+                  mynode,
+                  rootnode,
+                  comm
+                  ) != EXIT_SUCCESS)
+         {
+            cout << "Failed to read parameter file : "
+               << parameter_filename << " . Exiting" << endl;
+            return EXIT_FAILURE;
+         }
+         flags.parameter_file = 1;
+      }
+      else if ( args[idx] == "-o" )
          if ( idx + 1 < args.size()) 
          {
             output_prefix = args[idx + 1];
-            flag_outprefix = true;
+            flags.output_prefix = 1;   // true
             idx += 1;
          }
-      if ( args[idx] == "-i" )
+      else if ( args[idx] == "-i" )
          if ( idx + 1 < args.size()) 
          {
             input_field_name = string( args[idx + 1] );
-            flag_input_field = true;
+            flags.input_field = 1;  // true
             idx += 1;
          }
-      if ( args[idx] == "-dt" )
+      else if ( args[idx] == "-dt" )
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> dt;
-            flag_dt = true;
+            flags.dt = 1;
          }
-      if ( args[idx] == "-Nt" )
+      else if ( args[idx] == "-Nt" )
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> Nt;
-            flag_Nt = true;
+            std::cout << "Nt : " << Nt << std::endl;// debug
+            flags.Nt = 1;
          }
-      //if ( args[idx] == "-r" )
-      //   if ( idx + 1 < args.size()) 
-      //   {
-      //      istringstream( args[idx + 1] ) >> rate_scale_factor;
-      //      flag_r = true;
-      //   }
-      if ( args[idx] == "-wp" )
+      else if ( args[idx] == "-Nv" )
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> Nv;
+            flags.Nv = 1;
+         }
+      else if ( args[idx] == "-wp" )
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> write_period;
-            flag_wp = true;
+            flags.wp = 1;
          }
-      if ( args[idx] == "-stat" ) flag_calcstat= true;
+      else if ( args[idx] == "-stat" ) flags.calcstat= 1;
    }
-   if ( !(flag_outprefix & flag_input_field ))
+
+   if ( !((flags.output_prefix == 1) & (flags.input_field == 1) ))
    {
       if ( mynode == rootnode )
-         cout << "Error: insufficient arguments ..." << endl;
+         cout << "Error: insufficient arguments;" 
+            << " require both input field (-i <file>)"
+            << " and output prefix (-o <path/file> )" << endl;
 
       return EXIT_FAILURE;
    }
-   if ( !flag_dt )
+   if ( flags.dt == 0 )
    {
       if ( mynode == rootnode )
          cout << "warning: time increment (-dt <#>) not specified,"
@@ -137,7 +189,7 @@ int SPF_NS::read_cmdline_options(
             << endl;
       dt = 1.0;
    }
-   if ( !flag_Nt )
+   if ( flags.Nt == 0 )
    {
       if ( mynode == rootnode )
          cout << "Error: number of time steps (-Nt <#> ) not specified"
@@ -147,101 +199,5 @@ int SPF_NS::read_cmdline_options(
    return EXIT_SUCCESS;
 } // read_cmdline_options()
 
-//int SPF_NS::read_cmdline_options(
-//      const std::vector<string>& args,
-//      double& dt,
-//      int& Nt,
-//      //double& scalar_integrand,
-//      //double& rate_scale_factor,
-//      int& write_period,
-//      bool& flag_calcstat,
-//      string& output_prefix,
-//      string& input_field_name,
-//      const int& mynode,
-//      const int& rootnode,
-//      MPI_Comm comm
-//      )
-//{
-//   // define flags to check input requirements
-//   bool flag_outprefix; flag_outprefix= false;
-//   bool flag_input_field; flag_input_field = false;
-//   bool flag_dt; flag_dt = false;
-//   bool flag_Nt; flag_Nt = false;
-//   //bool flag_r; flag_r = false;
-//   bool flag_f; flag_f = false;
-//   bool flag_wp; flag_wp = false;
-//
-//   for ( size_t idx=1; idx < args.size(); idx++)
-//   {
-//      if ( args[idx] == "-o" )
-//         if ( idx + 1 < args.size()) 
-//         {
-//            output_prefix = args[idx + 1];
-//            flag_outprefix = true;
-//            idx += 1;
-//         }
-//      if ( args[idx] == "-i" )
-//         if ( idx + 1 < args.size()) 
-//         {
-//            input_field_name = string( args[idx + 1] );
-//            flag_input_field = true;
-//            idx += 1;
-//         }
-//      if ( args[idx] == "-dt" )
-//         if ( idx + 1 < args.size()) 
-//         {
-//            istringstream( args[idx + 1] ) >> dt;
-//            flag_dt = true;
-//         }
-//      if ( args[idx] == "-Nt" )
-//         if ( idx + 1 < args.size()) 
-//         {
-//            istringstream( args[idx + 1] ) >> Nt;
-//            flag_Nt = true;
-//         }
-//      //if ( args[idx] == "-r" )
-//      //   if ( idx + 1 < args.size()) 
-//      //   {
-//      //      istringstream( args[idx + 1] ) >> rate_scale_factor;
-//      //      flag_r = true;
-//      //   }
-//      //if ( args[idx] == "-f" )
-//      //   if ( idx + 1 < args.size()) 
-//      //   {
-//      //      istringstream( args[idx + 1] ) >> scalar_integrand;
-//      //      flag_f = true;
-//      //   }
-//      if ( args[idx] == "-wp" )
-//         if ( idx + 1 < args.size()) 
-//         {
-//            istringstream( args[idx + 1] ) >> write_period;
-//            flag_wp = true;
-//         }
-//      if ( args[idx] == "-stat" ) flag_calcstat= true;
-//   }
-//   if ( !(flag_outprefix & flag_input_field ))
-//   {
-//      if ( mynode == rootnode )
-//         cout << "Error: insufficient arguments ..." << endl;
-//
-//      return EXIT_FAILURE;
-//   }
-//   if ( !flag_dt )
-//   {
-//      if ( mynode == rootnode )
-//         cout << "warning: time increment (-dt <#>) not specified,"
-//           << " assigning dt = 1"
-//            << endl;
-//      dt = 1.0;
-//   }
-//   if ( !flag_Nt )
-//   {
-//      if ( mynode == rootnode )
-//         cout << "Error: number of time steps (-Nt <#> ) not specified"
-//            << endl;
-//      return EXIT_FAILURE;
-//   }
-//   return EXIT_SUCCESS;
-//} // read_cmdline_options()
 
 #endif

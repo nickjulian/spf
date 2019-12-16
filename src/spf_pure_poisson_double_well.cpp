@@ -95,7 +95,7 @@ int main( int argc, char* argv[])
    double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
    double ww; ww = -0.1; // order energy
    double TT; TT = 540; // order energy
-   int Nv; Nv = 100; // number of walkers possible in a voxel
+   int Nv; Nv = 1; // number of walkers possible in a voxel
 
    ////////////////////////////////////////////////////////////////////
 
@@ -110,6 +110,7 @@ int main( int argc, char* argv[])
             args,
             dt,
             Nt,
+            Nv,
             //rate_scale_factor,
             write_period,
             flag_calcstat,
@@ -337,8 +338,8 @@ int main( int argc, char* argv[])
       log_file << "-o " << output_prefix << endl;
       log_file << "-i " << inputFileName << endl;
       log_file << "-Nt " << Nt << endl;
+      log_file << "-Nv " << Nv << endl;
       log_file << "-dt " << dt << endl;
-      //log_file << "-r " << rate_scale_factor << endl;
       log_file << "-wp " << write_period << endl;
       log_file << endl;
       if ( flag_calcstat ) log_file << "-stat " << endl;
@@ -566,7 +567,13 @@ int main( int argc, char* argv[])
       //  every voxel.
       
       std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
+      std::vector<size_t> neigh_order(6,0);   // re-used in each iteration
       std::vector<double> jump_rates(6,0);   // re-used in each iteration 
+
+      std::uniform_real_distribution<double> rand_decimal(0,1);// for order
+      std::vector<double> rand_decimals1(6,0); // reused each reordering
+      std::vector<double> rand_decimals2(6,0); // reused each reordering
+
       //size_t idx; // 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
@@ -585,6 +592,14 @@ int main( int argc, char* argv[])
                      neigh_idxs[5],
                      ii, jj, kk,
                      Ny, Nz
+                     );
+
+               randomize_neighbor_order(
+                     neigh_order,
+                     rr,   // random generator
+                     rand_decimal,  // uniform_distribution<int>
+                     rand_decimals1, // reused vector, not useful outside
+                     rand_decimals2 // reused vector, not useful outside
                      );
 
                //conserved_gaussian_flux( 
@@ -640,6 +655,7 @@ int main( int argc, char* argv[])
                      //rate_scale_factor,
                      idx,
                      neigh_idxs,
+                     neigh_order,
                      Nv,
                      Ny,
                      Nz
@@ -996,7 +1012,6 @@ int main( int argc, char* argv[])
       time_t end_time;
       std::time(&end_time);
       log_file << "End " << std::ctime(&end_time) << endl;
-      //log_file << endl;
       log_file.close();
    }
    ////////////////////////////////////////////////////////////////////

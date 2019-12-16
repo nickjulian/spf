@@ -15,6 +15,55 @@
 #define ONESIXTH 0.16666666666666666666666666666666666666666666666666666667
 #endif
 
+int SPF_NS::randomize_neighbor_order(
+      std::vector<size_t>& neigh_order,  // 6 elements
+      SPF_NS::random& rr,
+      std::uniform_real_distribution<double>& rand_decimal,
+      std::vector<double>& rand_decimals1, // reused, 6 elements
+      std::vector<double>& rand_decimals2 // reused, 6 elements
+      )
+{
+   //std::vector<double> rand_decimals1(6,0);
+   //std::vector<double> rand_decimals2(6,0);
+
+   bool randomized_flag; randomized_flag = true;
+   //std::uniform_real_distribution<double> rand_decimal(0,1);
+   do {
+      for( size_t ii=0; ii < 6; ++ii) 
+      {
+         rand_decimals1[ii] = rand_decimal( rr.generator );
+         rand_decimals2[ii] = rand_decimals1[ii];
+      }
+      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+
+      // check that no number was drawn twice by rand_decimal()
+      std::vector<double>::iterator decimals_itr;
+      decimals_itr = std::unique(rand_decimals1.begin(), 
+                                 rand_decimals1.end() );
+      rand_decimals1.resize( 
+               std::distance( rand_decimals1.begin(), decimals_itr) );
+      if ( rand_decimals1.size() != 6 )
+      {
+         randomized_flag = false;
+      }
+   }
+   while ( ! randomized_flag );
+
+   for( size_t ii=0; ii < 6; ++ii)
+   {
+      for( size_t jj=0; jj < 6; ++jj)
+      {
+            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+            {
+               neigh_order[jj] = ii;
+               continue;
+            }
+      }
+   }
+
+   return EXIT_SUCCESS;
+}
+
 int SPF_NS::conserved_gaussian_flux_single_distribution_milstein(
    std::vector<double>& local_change, // must be same size as local_field
    const std::vector<double>& local_field,
@@ -791,6 +840,7 @@ int SPF_NS::conserved_jump_flux_separate_distributions(
    const double& dt,
    const size_t& idx,
    const std::vector<size_t>& neigh_idxs,  // 6 elements
+   const std::vector<size_t>& neigh_order,  // 6 elements
    const int& Nv,
    const int& Ny,
    const int& Nz
@@ -824,44 +874,44 @@ int SPF_NS::conserved_jump_flux_separate_distributions(
    //}
    
    // randomize the order in which walkers are distributed to neighbors
-   std::vector<size_t> neigh_num_scrambled(6,0);
-   std::vector<double> rand_decimals1(6,0);
-   std::vector<double> rand_decimals2(6,0);
+   //std::vector<size_t> neigh_num_scrambled(6,0);
+   //std::vector<double> rand_decimals1(6,0);
+   //std::vector<double> rand_decimals2(6,0);
 
-   bool randomized_flag; randomized_flag = true;
-   std::uniform_real_distribution<double> rand_decimal(0,1);
-   do {
-      for( size_t ii=0; ii < 6; ++ii) 
-      {
-         rand_decimals1[ii] = rand_decimal( rr.generator );
-         rand_decimals2[ii] = rand_decimals1[ii];
-      }
-      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+   //bool randomized_flag; randomized_flag = true;
+   //std::uniform_real_distribution<double> rand_decimal(0,1);
+   //do {
+   //   for( size_t ii=0; ii < 6; ++ii) 
+   //   {
+   //      rand_decimals1[ii] = rand_decimal( rr.generator );
+   //      rand_decimals2[ii] = rand_decimals1[ii];
+   //   }
+   //   std::sort( rand_decimals1.begin(), rand_decimals1.end());
 
-      // check that no number was drawn twice by rand_decimal()
-      std::vector<double>::iterator decimals_itr;
-      decimals_itr = std::unique(rand_decimals1.begin(), 
-                                 rand_decimals1.end() );
-      rand_decimals1.resize( 
-               std::distance( rand_decimals1.begin(), decimals_itr) );
-      if ( rand_decimals1.size() != 6 )
-      {
-         randomized_flag = false;
-      }
-   }
-   while ( ! randomized_flag );
+   //   // check that no number was drawn twice by rand_decimal()
+   //   std::vector<double>::iterator decimals_itr;
+   //   decimals_itr = std::unique(rand_decimals1.begin(), 
+   //                              rand_decimals1.end() );
+   //   rand_decimals1.resize( 
+   //            std::distance( rand_decimals1.begin(), decimals_itr) );
+   //   if ( rand_decimals1.size() != 6 )
+   //   {
+   //      randomized_flag = false;
+   //   }
+   //}
+   //while ( ! randomized_flag );
 
-   for( size_t ii=0; ii < 6; ++ii)
-   {
-      for( size_t jj=0; jj < 6; ++jj)
-      {
-            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
-            {
-               neigh_num_scrambled[jj] = ii;
-               continue;
-            }
-      }
-   }
+   //for( size_t ii=0; ii < 6; ++ii)
+   //{
+   //   for( size_t jj=0; jj < 6; ++jj)
+   //   {
+   //         if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+   //         {
+   //            neigh_num_scrambled[jj] = ii;
+   //            continue;
+   //         }
+   //   }
+   //}
 
    // debug
    //std::cout << "neigh_idx_scramble[] : " ;
@@ -873,8 +923,8 @@ int SPF_NS::conserved_jump_flux_separate_distributions(
    // end debug
    //exiting_current_voxel = 0;
    for( std::vector<size_t>::const_iterator 
-         neigh_num_itr = neigh_num_scrambled.begin(); 
-         neigh_num_itr != neigh_num_scrambled.end(); 
+         neigh_num_itr = neigh_order.begin(); 
+         neigh_num_itr != neigh_order.end(); 
          ++neigh_num_itr)
          //size_t ii=0; ii < neigh_num_scrambled.size(); ++ii)
    {
@@ -921,6 +971,7 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
    const double& dt,
    const size_t& idx,
    const std::vector<size_t>& neigh_idxs,  // 6 elements
+   const std::vector<size_t>& neigh_order,  // 6 elements
    const int& Ny,
    const int& Nz
    )
@@ -954,44 +1005,44 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
    //}
    
    // randomize the order in which walkers are distributed to neighbors
-   std::vector<size_t> neigh_num_scrambled(6,0);
-   std::vector<double> rand_decimals1(6,0);
-   std::vector<double> rand_decimals2(6,0);
+   //std::vector<size_t> neigh_num_scrambled(6,0);
+   //std::vector<double> rand_decimals1(6,0);
+   //std::vector<double> rand_decimals2(6,0);
 
-   bool randomized_flag; randomized_flag = true;
-   std::uniform_real_distribution<double> rand_decimal(0,1);
-   do {
-      for( size_t ii=0; ii < 6; ++ii) 
-      {
-         rand_decimals1[ii] = rand_decimal( rr.generator );
-         rand_decimals2[ii] = rand_decimals1[ii];
-      }
-      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+   //bool randomized_flag; randomized_flag = true;
+   //std::uniform_real_distribution<double> rand_decimal(0,1);
+   //do {
+   //   for( size_t ii=0; ii < 6; ++ii) 
+   //   {
+   //      rand_decimals1[ii] = rand_decimal( rr.generator );
+   //      rand_decimals2[ii] = rand_decimals1[ii];
+   //   }
+   //   std::sort( rand_decimals1.begin(), rand_decimals1.end());
 
-      // check that no number was drawn twice by rand_decimal()
-      std::vector<double>::iterator decimals_itr;
-      decimals_itr = std::unique(rand_decimals1.begin(), 
-                                 rand_decimals1.end() );
-      rand_decimals1.resize( 
-               std::distance( rand_decimals1.begin(), decimals_itr) );
-      if ( rand_decimals1.size() != 6 )
-      {
-         randomized_flag = false;
-      }
-   }
-   while ( ! randomized_flag );
+   //   // check that no number was drawn twice by rand_decimal()
+   //   std::vector<double>::iterator decimals_itr;
+   //   decimals_itr = std::unique(rand_decimals1.begin(), 
+   //                              rand_decimals1.end() );
+   //   rand_decimals1.resize( 
+   //            std::distance( rand_decimals1.begin(), decimals_itr) );
+   //   if ( rand_decimals1.size() != 6 )
+   //   {
+   //      randomized_flag = false;
+   //   }
+   //}
+   //while ( ! randomized_flag );
 
-   for( size_t ii=0; ii < 6; ++ii)
-   {
-      for( size_t jj=0; jj < 6; ++jj)
-      {
-            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
-            {
-               neigh_num_scrambled[jj] = ii;
-               continue;
-            }
-      }
-   }
+   //for( size_t ii=0; ii < 6; ++ii)
+   //{
+   //   for( size_t jj=0; jj < 6; ++jj)
+   //   {
+   //         if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+   //         {
+   //            neigh_num_scrambled[jj] = ii;
+   //            continue;
+   //         }
+   //   }
+   //}
 
    // debug
    //std::cout << "neigh_idx_scramble[] : " ;
@@ -1004,8 +1055,8 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions(
 
    std::normal_distribution<double> gd( 0.0, 1.0);
    for( std::vector<size_t>::const_iterator 
-         neigh_num_itr = neigh_num_scrambled.begin(); 
-         neigh_num_itr != neigh_num_scrambled.end(); 
+         neigh_num_itr = neigh_order.begin(); 
+         neigh_num_itr != neigh_order.end(); 
          ++neigh_num_itr)
          //size_t ii=0; ii < neigh_num_scrambled.size(); ++ii)
    {
@@ -1070,6 +1121,7 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_ito(
    const double& dt,
    const size_t& idx,
    const std::vector<size_t>& neigh_idxs,  // 6 elements
+   const std::vector<size_t>& neigh_order,  // 6 elements
    const int& Ny,
    const int& Nz
    )
@@ -1103,44 +1155,44 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_ito(
    //}
    
    // randomize the order in which walkers are distributed to neighbors
-   std::vector<size_t> neigh_num_scrambled(6,0);
-   std::vector<double> rand_decimals1(6,0);
-   std::vector<double> rand_decimals2(6,0);
+   //std::vector<size_t> neigh_num_scrambled(6,0);
+   //std::vector<double> rand_decimals1(6,0);
+   //std::vector<double> rand_decimals2(6,0);
 
-   bool randomized_flag; randomized_flag = true;
-   std::uniform_real_distribution<double> rand_decimal(0,1);
-   do {
-      for( size_t ii=0; ii < 6; ++ii) 
-      {
-         rand_decimals1[ii] = rand_decimal( rr.generator );
-         rand_decimals2[ii] = rand_decimals1[ii];
-      }
-      std::sort( rand_decimals1.begin(), rand_decimals1.end());
+   //bool randomized_flag; randomized_flag = true;
+   //std::uniform_real_distribution<double> rand_decimal(0,1);
+   //do {
+   //   for( size_t ii=0; ii < 6; ++ii) 
+   //   {
+   //      rand_decimals1[ii] = rand_decimal( rr.generator );
+   //      rand_decimals2[ii] = rand_decimals1[ii];
+   //   }
+   //   std::sort( rand_decimals1.begin(), rand_decimals1.end());
 
-      // check that no number was drawn twice by rand_decimal()
-      std::vector<double>::iterator decimals_itr;
-      decimals_itr = std::unique(rand_decimals1.begin(), 
-                                 rand_decimals1.end() );
-      rand_decimals1.resize( 
-               std::distance( rand_decimals1.begin(), decimals_itr) );
-      if ( rand_decimals1.size() != 6 )
-      {
-         randomized_flag = false;
-      }
-   }
-   while ( ! randomized_flag );
+   //   // check that no number was drawn twice by rand_decimal()
+   //   std::vector<double>::iterator decimals_itr;
+   //   decimals_itr = std::unique(rand_decimals1.begin(), 
+   //                              rand_decimals1.end() );
+   //   rand_decimals1.resize( 
+   //            std::distance( rand_decimals1.begin(), decimals_itr) );
+   //   if ( rand_decimals1.size() != 6 )
+   //   {
+   //      randomized_flag = false;
+   //   }
+   //}
+   //while ( ! randomized_flag );
 
-   for( size_t ii=0; ii < 6; ++ii)
-   {
-      for( size_t jj=0; jj < 6; ++jj)
-      {
-            if ( rand_decimals1[jj] == rand_decimals2[ii]) 
-            {
-               neigh_num_scrambled[jj] = ii;
-               continue;
-            }
-      }
-   }
+   //for( size_t ii=0; ii < 6; ++ii)
+   //{
+   //   for( size_t jj=0; jj < 6; ++jj)
+   //   {
+   //         if ( rand_decimals1[jj] == rand_decimals2[ii]) 
+   //         {
+   //            neigh_num_scrambled[jj] = ii;
+   //            continue;
+   //         }
+   //   }
+   //}
 
    // debug
    //std::cout << "neigh_idx_scramble[] : " ;
@@ -1153,8 +1205,8 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_ito(
 
    std::normal_distribution<double> gd( 0.0, 1.0);
    for( std::vector<size_t>::const_iterator 
-         neigh_num_itr = neigh_num_scrambled.begin(); 
-         neigh_num_itr != neigh_num_scrambled.end(); 
+         neigh_num_itr = neigh_order.begin(); 
+         neigh_num_itr != neigh_order.end(); 
          ++neigh_num_itr)
          //size_t ii=0; ii < neigh_num_scrambled.size(); ++ii)
    {

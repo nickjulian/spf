@@ -8,18 +8,18 @@
 #include "check_for_failure.hpp"
 
 bool SPF_NS::check_for_failure(
-      int failflag,
+      int_flags& flags,
       MPI_Comm comm
       )
 {
    MPI_Allreduce( 
          MPI_IN_PLACE, // sendbuf
-         &failflag, // recvbuf
+         &(flags.fail), // recvbuf
          1, // count
          MPI_INT, // MPI datatype
          MPI_SUM, // reduction operation
          comm);
-   if ( failflag != 0) return true;
+   if ( flags.fail != 0) return true;
    else return false;
 }
 #endif

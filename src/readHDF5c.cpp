@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
     Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
 ---------------------------------------------------------------------- */
-// File: readHDF5c.hpp
+// File: readHDF5c.cpp
 // Purpose:
 
 #ifndef READHDF5C_CPP
@@ -16,13 +16,13 @@ int SPF_NS::read_phi_from_hdf5(
       const std::vector<size_t>& idx_start, 
       const std::vector<size_t>& idx_end,
       //const std::vector<int>& periodicity,
+      int_flags& flags,
       const int& mynode,
       const int& rootnode,
       const int& totalnodes,
       MPI_Comm comm
       )
 {
-   //int failflag; failflag = 0;
    hid_t phi_dataset_id, phi_dataspace_id;
    herr_t status; status = 0;
    hssize_t N_total;
@@ -265,6 +265,7 @@ int SPF_NS::determine_local_idxs(
 int SPF_NS::read_dims_from_hdf5( 
          const hid_t inFile_id,
          std::vector<hsize_t>& dims,
+         int_flags& flags,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,
@@ -273,11 +274,10 @@ int SPF_NS::read_dims_from_hdf5(
 {
    // resizes dims and sets dims[i] = # elements in i^{th} dimension
    // assumes all field data have same dimensions
-   int failflag; failflag = 0;
    hid_t phi_dataset_id, phi_dataspace_id;
    phi_dataset_id = H5Dopen2( inFile_id, "/phi", H5P_DEFAULT);
-   if ( phi_dataset_id < 0 ) failflag = -1;
-   if ( check_for_failure( failflag, comm ) == true )
+   if ( phi_dataset_id < 0 ) flags.fail = -1;
+   if ( check_for_failure( flags, comm ) == true )
    {
       cout << "node " << mynode // debug 
          << " could not read '/phi' dataset" // debug
@@ -286,8 +286,8 @@ int SPF_NS::read_dims_from_hdf5(
       return EXIT_FAILURE;
    }
    phi_dataspace_id = H5Dget_space( phi_dataset_id );
-   if ( phi_dataspace_id < 0 ) failflag = -1;
-   if ( check_for_failure( failflag, comm ) == true )
+   if ( phi_dataspace_id < 0 ) flags.fail = -1;
+   if ( check_for_failure( flags, comm ) != 0)
    {
       cout << "node " << mynode  // debug
          << " could not read '/phi' dataspace" // debug
@@ -302,8 +302,8 @@ int SPF_NS::read_dims_from_hdf5(
    dims.resize(3, 1);
    hsize_t h5dims[ndims];
    ndims2 = H5Sget_simple_extent_dims( phi_dataspace_id, h5dims, NULL);
-   if ( ndims2 < 1 || ndims2 > 3 ) failflag = -1;
-   if ( check_for_failure( failflag, comm ) == true )
+   if ( ndims2 < 1 || ndims2 > 3 ) flags.fail = -1;
+   if ( check_for_failure( flags, comm ) == true )
    {
       cout << "node " << mynode  // debug
          << " could not read dimensions of phi_dataspace" // debug
@@ -334,7 +334,6 @@ int SPF_NS::read_phi_from_hdf5_singlenode(
       //const std::vector<int>& periodicity,
       )
 {
-   //int failflag; failflag = 0;
    hid_t phi_dataset_id, phi_dataspace_id, group_id;
    herr_t status; status = 0;
    hssize_t N_total;

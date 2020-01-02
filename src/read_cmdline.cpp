@@ -13,7 +13,7 @@ int SPF_NS::read_cmdline_options(
       double& dt,
       int& Nt,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name
       )
@@ -22,9 +22,8 @@ int SPF_NS::read_cmdline_options(
          args,
          dt,
          Nt,
-         //rate_scale_factor,
          write_period,
-         flag_calcstat,
+         flags,
          output_prefix,
          input_field_name,
          0, 0,
@@ -36,7 +35,7 @@ int SPF_NS::read_cmdline_options(
       double& dt,
       int& Nt,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -50,49 +49,21 @@ int SPF_NS::read_cmdline_options(
          dt,
          Nt,
          Nv,
-         //rate_scale_factor,
          write_period,
-         flag_calcstat,
+         flags,
          output_prefix,
          input_field_name,
          0, 0,
          MPI_COMM_WORLD);
 }
 
-//int SPF_NS::read_cmdline_options(
-//      const std::vector<string>& args,
-//      double& dt,
-//      int& Nt,
-//      //double& scalar_integrand,
-//      //double& rate_scale_factor,
-//      int& write_period,
-//      bool& flag_calcstat,
-//      string& output_prefix,
-//      string& input_field_name
-//      )
-//{
-//   return read_cmdline_options(
-//         args,
-//         dt,
-//         Nt,
-//         //scalar_integrand,
-//         //rate_scale_factor,
-//         write_period,
-//         flag_calcstat,
-//         output_prefix,
-//         input_field_name,
-//         0, 0,
-//         MPI_COMM_WORLD);
-//}
-
 int SPF_NS::read_cmdline_options(
       const std::vector<string>& args,
       double& dt,
       int& Nt,
       int& Nv,
-      //double& rate_scale_factor,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -100,76 +71,114 @@ int SPF_NS::read_cmdline_options(
       MPI_Comm comm
       )
 {
-   // define flags to check input requirements
-   int_flags flags;
    string parameter_filename;
 
    // order of reading parameters allows cmdline to override those in file
    for ( size_t idx=1; idx < args.size(); idx++)
    {
+      //std::cout << "reading argument : " << idx  // debug
+      //   << " " << args[idx] << std::endl; // debug
       if ( args[idx] == "--parameter_file" )
       {
-         istringstream( args[idx + 1] ) >> parameter_filename;
-         if ( read_parameter_file(
-                  parameter_filename,
-                  flags,
-                  dt,
-                  Nt,
-                  Nv,
-                  write_period,
-                  output_prefix,
-                  input_field_name,
-                  mynode,
-                  rootnode,
-                  comm
-                  ) != EXIT_SUCCESS)
+         if ( idx + 1 < args.size()) 
          {
-            cout << "Failed to read parameter file : "
-               << parameter_filename << " . Exiting" << endl;
-            return EXIT_FAILURE;
+            istringstream( args[idx + 1] ) >> parameter_filename;
+            if ( read_parameter_file(
+                     parameter_filename,
+                     flags,
+                     dt,
+                     Nt,
+                     Nv,
+                     write_period,
+                     output_prefix,
+                     input_field_name,
+                     mynode,
+                     rootnode,
+                     comm
+                     ) != EXIT_SUCCESS)
+            {
+               cout << "Failed to read parameter file : "
+                  << parameter_filename << " . Exiting" << endl;
+               return EXIT_FAILURE;
+            }
+            flags.parameter_file = 1;
+            idx += 1;
          }
-         flags.parameter_file = 1;
+         //else
+         //   if ( mynode == rootnode )
+         //   {
+         //      std::cout 
+         //         << "missing argument to option '--parameter_file'" 
+         //         << std::endl;
+         //   }
       }
       else if ( args[idx] == "-o" )
+      {
          if ( idx + 1 < args.size()) 
          {
             output_prefix = args[idx + 1];
             flags.output_prefix = 1;   // true
             idx += 1;
          }
+         else
+            if ( mynode == rootnode )
+            {
+               std::cout << "missing argument to option '-o'" << std::endl;
+            }
+      }
       else if ( args[idx] == "-i" )
+      {
          if ( idx + 1 < args.size()) 
          {
             input_field_name = string( args[idx + 1] );
             flags.input_field = 1;  // true
             idx += 1;
          }
+      }
       else if ( args[idx] == "-dt" )
+      {
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> dt;
             flags.dt = 1;
+            idx += 1;
          }
+      }
       else if ( args[idx] == "-Nt" )
+      {
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> Nt;
-            std::cout << "Nt : " << Nt << std::endl;// debug
             flags.Nt = 1;
+            idx += 1;
          }
+      }
       else if ( args[idx] == "-Nv" )
+      {
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> Nv;
             flags.Nv = 1;
+            idx += 1;
          }
+      }
       else if ( args[idx] == "-wp" )
+      {
          if ( idx + 1 < args.size()) 
          {
             istringstream( args[idx + 1] ) >> write_period;
             flags.wp = 1;
+            idx += 1;
          }
-      else if ( args[idx] == "-stat" ) flags.calcstat= 1;
+      }
+      else if ( args[idx] == "-stat" ) 
+      {
+         flags.calcstat= 1;
+      }
+      else if ( args[idx] == "--debug" ) 
+      {
+         flags.debug = 1;
+      }
    }
 
    if ( !((flags.output_prefix == 1) & (flags.input_field == 1) ))

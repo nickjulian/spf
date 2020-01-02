@@ -15,6 +15,7 @@
 #include "../include/hdf5.h"
 
 #include "check_for_failure.hpp"
+#include "flags.hpp"
 
 using std::cout;
 using std::endl;
@@ -29,6 +30,7 @@ namespace SPF_NS
          const std::vector<size_t>& idx_start, 
          const std::vector<size_t>& idx_end,
          //const std::vector<int>& periodicity,
+         int_flags& flags,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,
@@ -42,9 +44,10 @@ namespace SPF_NS
          std::vector<double>& phi
          );
 
-   int read_dims_from_hdf5( // sets dims[i] = # elements in i^{th} dimension
+   int read_dims_from_hdf5(// sets dims[i] = # elements in i^{th} dimension
          const hid_t inFile_id,
          std::vector<hsize_t>& dims,
+         int_flags& flags,
          const int& mynode,
          const int& rootnode,
          const int& totalnodes,

@@ -6,7 +6,7 @@
 #ifndef READ_CMDLINE_HPP
 #define READ_CMDLINE_HPP
 
-#define PRINT_USAGE cout << "Usage: " << argv[0] << " <OPTIONS>" << endl << "OPTIONS : " << endl << "   -i <input field hdf5 file>" << endl << "   -o <output file prefix>" << endl << "   -Nt <number of time steps>" << endl << "   [-dt <time increment>]" << endl << "   [-wp <steps between file writes>]" << endl << "   [-stat]"<< endl;
+#define PRINT_USAGE cout << "Usage: " << argv[0] << " <OPTIONS>" << endl << "OPTIONS : " << endl << "   -i <input field hdf5 file>" << endl << "   -o <output file prefix>" << endl << "   -Nt <number of time steps>" << endl << "   -Nv <max number of states per voxel>" << endl << "   [-dt <time increment>]" << endl << "   [-wp <steps between file writes>]" << endl << "   [-stat]"<< endl;
 //<< "   [-f <scalar integrand>]" << endl 
 //<< "   [-r <rate scale factor>]" << endl 
 
@@ -37,7 +37,7 @@ int read_cmdline_options(
       int& Nt,
       int& Nv,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -50,7 +50,7 @@ int read_cmdline_options(
       double& dt,
       int& Nt,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name,
       const int& mynode,
@@ -63,7 +63,7 @@ int read_cmdline_options(
       double& dt,
       int& Nt,
       int& write_period,
-      bool& flag_calcstat,
+      int_flags& flags,
       string& output_prefix,
       string& input_field_name
       );

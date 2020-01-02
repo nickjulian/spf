@@ -24,9 +24,13 @@
 #include "stochastic_rates.hpp"
 #include "voxel_dynamics.hpp"
 
+#include "flags.hpp" // int_flags flags;
+
 #include "rand.hpp"
 //#include "jumps.hpp"
 //#include "rungekutta.hpp"
+#include "macheps.hpp"  // determines the local machine's relative 
+                        //  rounding error 
 
 using std::cout;
 using std::endl;
@@ -49,9 +53,6 @@ int main( int argc, char* argv[])
    world_comm = MPI_COMM_WORLD;
    MPI_Comm_size(world_comm, &totalnodes);//totalnodes= # of nodes in comm
    MPI_Comm_rank(world_comm, &mynode ); // mynode = rank of current node
-
-   int failflag; failflag = 0;
-   bool flag_calcstat; flag_calcstat = false;
 
    hid_t fa_plist_id, dx_plist_id;
    // file access property list
@@ -82,20 +83,20 @@ int main( int argc, char* argv[])
    // dimensional parameters
    std::vector<hsize_t> dims;
 
+   // TODO: why are these array dimensions integers rather than size_t?
    int Nx_total, Nx_local, Ny, Nz, Nt;
    Nx_total = 1; Nx_local = 1; Ny = 1; Nz = 1;
    int time_step; time_step = 0;
    int write_period; write_period = 1;
    double time, dt; time = 0; dt = 1;
-   //double rate_scale_factor; rate_scale_factor = 1.0;
 
    // TODO: erase this and read Nt from the cmdline
-   double diffusivityT; diffusivityT = 3.0E-4;
+   //double diffusivityT; diffusivityT = 3.0E-4;
+   int Nv; Nv = 1; // number of walkers possible in a voxel
 
    double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
    double ww; ww = -0.1; // order energy
    double TT; TT = 540; // order energy
-   int Nv; Nv = 1; // number of walkers possible in a voxel
 
    ////////////////////////////////////////////////////////////////////
 
@@ -104,6 +105,9 @@ int main( int argc, char* argv[])
    std::string inputFileName;
    std::vector<string> args( argv, argv + argc );
    std::string output_prefix;
+   int_flags flags;
+   flags.fail = 0;
+
    // NOTE: there might not be a way to safely Bcast strings without  
    //       assuming they're ASCII, so read cmdline options on all nodes.
    if ( read_cmdline_options(
@@ -111,9 +115,8 @@ int main( int argc, char* argv[])
             dt,
             Nt,
             Nv,
-            //rate_scale_factor,
             write_period,
-            flag_calcstat,
+            flags,
             output_prefix,
             inputFileName,
             mynode,
@@ -127,17 +130,33 @@ int main( int argc, char* argv[])
       MPI_Finalize();
       return EXIT_FAILURE;
    }
+   if ( (flags.debug != 0 ) && (mynode == rootnode ))
+   {
+      std::cout << "running with parameters: "
+                << "  -o " << output_prefix << std::endl
+                << "  -i " << inputFileName << std::endl
+                << "  -Nt " << Nt << std::endl
+                << "  -Nv " << Nv << std::endl
+                << "  -dt " << dt << std::endl
+                << "  -wp " << write_period << std::endl;
+   }
+
+   // establish field limits
+   double phi_upper_limit, phi_lower_limit;
+   phi_upper_limit = Nv;
+   phi_lower_limit = 0.0;
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
    // read input data
    hid_t inFile_id, outFile_id, phi_dataset_id, phi_dataspace_id;
 
-   // open the file
-   inFile_id = H5Fopen(inputFileName.c_str(), H5F_ACC_RDONLY, fa_plist_id);
+   // open the file containing the initial state
+   inFile_id = H5Fopen( inputFileName.c_str(), 
+                        H5F_ACC_RDONLY, fa_plist_id);
 
-   if (inFile_id < 0) failflag = -1;
-   if ( check_for_failure( failflag, world_comm) )
+   if (inFile_id < 0) flags.fail = -1;
+   if ( check_for_failure( flags, world_comm) )
    {
       MPI_Finalize();
       if ( mynode == rootnode )
@@ -151,24 +170,25 @@ int main( int argc, char* argv[])
    if ( read_dims_from_hdf5(
          inFile_id,
          dims,
+         flags,
          mynode,
          rootnode,
          totalnodes,
          world_comm
          ) == EXIT_FAILURE )
    {
-      failflag = -1;
+      flags.fail = -1;
    }
 
    if ( totalnodes > dims[0] )
    {
-      failflag = -1;
+      flags.fail = -1;
       if ( mynode == rootnode )
          cout << "Error, number of compute nodes "
             "> number of points on phi domain" << endl;
    }
 
-   if ( check_for_failure( failflag, world_comm) )
+   if ( check_for_failure( flags, world_comm) )
    {
       MPI_Finalize();
       if ( mynode == rootnode )
@@ -181,6 +201,14 @@ int main( int argc, char* argv[])
 
    int ndims; 
    ndims = dims.size();
+
+   // machine relative error
+   epsilon eps;
+   if ( flags.debug != 0)
+   {
+      std::cout << "node " << mynode 
+         << " machine epsilon: " << eps.dbl << std::endl;
+   }
 
    // indices of local (non-ghost) data for use in pre-split data array
    std::vector<size_t> idx_start(ndims,0);
@@ -197,10 +225,10 @@ int main( int argc, char* argv[])
                         idx_end
                         ) == EXIT_FAILURE)
    {
-      failflag = -1;
+      flags.fail = -1;
    }
 
-   if ( check_for_failure( failflag, world_comm) )
+   if ( check_for_failure( flags, world_comm) )
    {
       H5Fclose( inFile_id );
       MPI_Finalize();
@@ -235,24 +263,39 @@ int main( int argc, char* argv[])
    int periodic; periodic = 1; // assume periodic boundary conditions
    std::vector<int> periodicity(ndims, periodic); // all identical for now
 
+   size_t Nvoxel_neighbors; 
    std::vector<double> phi_local(Nx_local + 2, 0);
    //if ( ndims == 1 ) phi_local.resize(Nx_local + 2, 0);
-   if ( ndims == 2 ) phi_local.resize((Nx_local + 2)*Ny, 0);
-   if ( ndims == 3 ) phi_local.resize((Nx_local + 2)*Ny*Nz, 0);
+   if ( ndims == 2 ) 
+   {
+      phi_local.resize((Nx_local + 2)*Ny, 0);
+      Nvoxel_neighbors = 4;
+      if ( mynode == rootnode )
+         std::cout << "Error: program not yet capable of 2-D, only 3-D."
+            << std::endl;
+      return EXIT_FAILURE;
+   }
+   if ( ndims == 3 ) 
+   {
+      phi_local.resize((Nx_local + 2)*Ny*Nz, 0);
+      Nvoxel_neighbors = 6;
+
+   }
 
    if ( read_phi_from_hdf5( 
                         inFile_id,
                         phi_local, 
                         idx_start, 
                         idx_end,
+                        flags,
                         //periodicity,
                         mynode, rootnode, totalnodes, world_comm
                         ) == EXIT_FAILURE)
    {
-      failflag = -1;
+      flags.fail = -1;
    }
 
-   if ( check_for_failure( failflag, world_comm) )
+   if ( check_for_failure( flags, world_comm) )
    {
       H5Fclose( inFile_id );
       MPI_Finalize();
@@ -266,32 +309,32 @@ int main( int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   // close the HDF5 file
+   // close the initial state HDF5 file
    H5Fclose( inFile_id );
 
    // TODO: make voxel separation distance part of the input file
-   double hh_x; double hh_y; double hh_z;
-   hh_x = 1.0/(Nx_total ); 
-   //hh_x = (Nx_total +1); 
-   hh_y = 1.0/(Ny ); 
-   hh_z = 1.0/(Nz );
+   //double hh_x; double hh_y; double hh_z;
+   //hh_x = 1.0/(Nx_total ); 
+   //hh_y = 1.0/(Ny ); 
+   //hh_z = 1.0/(Nz );
 
    // TODO: make stability checks dynamic when diffusivity becomes variable
    // For the dynamics to be stable, require
    //  \delta t <= (h^2)/(2*D_{T}) on each independent axis.
    //if ( dt > hh_x*hh_x/(6.0*diffusivityT) ) failflag = -1;
-   //if ( check_for_failure( failflag, world_comm) )
+   //if ( check_for_failure( flags.fail, world_comm) )
    //{
    //   MPI_Finalize();
    //   if ( mynode == rootnode )
    //   {
-   //      cout << "Error, discretization is unstable: dt > dx/(2 D_T)" << inputFileName
+   //      cout << "Error, discretization is unstable: dt > dx/(2 D_T)" 
+   //         << inputFileName
    //         << endl;
    //   }
    //   return EXIT_FAILURE;
    //}
    //if ( dt > hh_y*hh_y/(6.0*diffusivityT) ) failflag = -1;
-   //if ( check_for_failure( failflag, world_comm) )
+   //if ( check_for_failure( flags.fail, world_comm) )
    //{
    //   MPI_Finalize();
    //   if ( mynode == rootnode )
@@ -302,7 +345,7 @@ int main( int argc, char* argv[])
    //   return EXIT_FAILURE;
    //}
    //if ( dt > hh_z*hh_z/(6.0*diffusivityT) ) failflag = -1;
-   //if ( check_for_failure( failflag, world_comm) )
+   //if ( check_for_failure( flags.fail, world_comm) )
    //{
    //   MPI_Finalize();
    //   if ( mynode == rootnode )
@@ -318,10 +361,10 @@ int main( int argc, char* argv[])
    ////////////////////////////////////////////////////////////////////
    // write run parameters to a text file
    ofstream log_file;
-   if ( mynode == rootnode )
+   if ((flags.debug != 0) && ( mynode == rootnode ))
    {
-      cout << "Saving run parameters to file: " << output_prefix + ".log" 
-        << endl; // debug 
+      cout << "Saving run parameters to file: " 
+         << output_prefix + ".log" << endl;
       log_file.open(output_prefix + ".log", 
                         ios::app | ios::ate);
 
@@ -342,26 +385,10 @@ int main( int argc, char* argv[])
       log_file << "-dt " << dt << endl;
       log_file << "-wp " << write_period << endl;
       log_file << endl;
-      if ( flag_calcstat ) log_file << "-stat " << endl;
-      //log_file << endl;
+      if ( flags.calcstat != 0 ) log_file << "-stat " << endl;
       log_file.close();
    }
    ////////////////////////////////////////////////////////////////////
-
-   ////////////////////////////////////////////////////////////////////
-   // instantiate containers of local field changes
-   //std::vector<double> phi_local_change(Nx_local*Ny*Nz,0);
-   std::vector<double> phi_local_change(phi_local.size(),0);
-   //std::vector<double> phi_local_change(Nphi_local,0);
-   ////////////////////////////////////////////////////////////////////
-
-   // variables for statistical analysis
-   double phi_local_sum; phi_local_sum = 0;
-   double phi_local_sqr_sum; phi_local_sqr_sum = 0;
-   double phi_total_sum; phi_total_sum = 0;
-   double phi_total_sqr_sum; phi_total_sqr_sum = 0;
-   double phi_mean; phi_mean = 0;
-   double phi_variance; phi_variance = 0;
 
    ////////////////////////////////////////////////////////////////////
    // Create communicators between cartesian neighbors
@@ -392,32 +419,14 @@ int main( int argc, char* argv[])
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
-   // instantiate reusable variables
-   std::vector<double> phi_flux_upward( Ny * Nz, 0);
-   std::vector<double> phi_flux_downward( Ny * Nz, 0);
-   std::vector<double> phi_flux_from_above( Ny * Nz, 0);
-   std::vector<double> phi_flux_from_below( Ny * Nz, 0);
-   
-   MPI_Request halo_recv_requests[2]; // two Isend per halo
-   MPI_Request halo_send_requests[2]; // two Isend per halo
-
-   // TODO: see if the random class may be instantiated only once
-   SPF_NS::random rr;//( 0.01, dt);
-
-   //size_t neigh_idx_x[2];
-   //size_t neigh_idx_y[2];
-   //size_t neigh_idx_z[2];
-   ////////////////////////////////////////////////////////////////////
-   
-   ////////////////////////////////////////////////////////////////////
    // open a file to write the fields evolutions to
    string outputFileName; outputFileName = output_prefix + ".h5";
    outFile_id = H5Fcreate(outputFileName.c_str(), 
                         //H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
                         H5F_ACC_TRUNC, H5P_DEFAULT, fa_plist_id);
    // open file
-   if (outFile_id < 0) failflag = -1;
-   if ( check_for_failure( failflag, world_comm) )
+   if (outFile_id < 0) flags.fail= -1;
+   if ( check_for_failure( flags, world_comm) )
    {
       MPI_Finalize();
       if ( mynode == rootnode )
@@ -433,7 +442,7 @@ int main( int argc, char* argv[])
    ////////////////////////////////////////////////////////////////////
    // open a file to store statistical information
    ofstream stat_file;
-   if ( flag_calcstat && (mynode == rootnode) )
+   if ( (flags.calcstat != 0) && (mynode == rootnode) )
    {
       cout << "opening file: " << output_prefix + "_phi_variance.txt" 
         << endl; // debug 
@@ -449,6 +458,87 @@ int main( int argc, char* argv[])
       }
    }
    ////////////////////////////////////////////////////////////////////
+   
+   ////////////////////////////////////////////////////////////////////
+   // instantiate containers of local field changes
+   //std::vector<double> phi_local_change(Nx_local*Ny*Nz,0);
+   //std::vector<double> phi_local_change(phi_local.size(),0);
+   //std::vector<double> phi_local_change(Nphi_local,0);
+
+   //std::vector<std::vector<double>> // flux[i,j,k][2]
+   //   phi_local_flux(phi_local.size(),std::vector<double>(2,0)); 
+   std::vector<double> // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+      phi_local_flux( Nvoxel_neighbors * phi_local.size() );//[n,i,j,k]
+
+   std::vector<double> // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+      phi_local_rates( Nvoxel_neighbors * phi_local.size() );//[n,i,j,k]
+   ////////////////////////////////////////////////////////////////////
+
+   ////////////////////////////////////////////////////////////////////
+   // instantiate reusable variables
+   
+   // fluxes, assuming each element has only a single source voxel
+   std::vector<double> phi_flux_upward( Ny * Nz, 0);
+   std::vector<double> phi_flux_downward( Ny * Nz, 0);
+   std::vector<double> phi_flux_from_above( Ny * Nz, 0);
+   std::vector<double> phi_flux_from_below( Ny * Nz, 0);
+
+   // flux rates of first passage to determine voxel filling order
+   std::vector<double> phi_flux_upward_rates( Ny * Nz, 0);
+   std::vector<double> phi_flux_downward_rates( Ny * Nz, 0);
+   std::vector<double> phi_flux_from_above_rates( Ny * Nz, 0);
+   std::vector<double> phi_flux_from_below_rates( Ny * Nz, 0);
+
+   // remainders returned to neighbors after fillling
+   //std::vector<double> phi_flux_upward_remainder( Ny * Nz, 0);
+   //std::vector<double> phi_flux_downward_remainder( Ny * Nz, 0);
+   //std::vector<double> phi_flux_from_above_remainder( Ny * Nz, 0);
+   //std::vector<double> phi_flux_from_below_remainder( Ny * Nz, 0);
+
+      
+   std::vector<size_t> neigh_idxs(Nvoxel_neighbors, 0);
+
+   //std::vector<double> jump_rates(6,0); // overwritten at every voxel
+   // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+
+   //std::vector<size_t> neigh_order(Nvoxel_neighbors, 0);
+   //std::uniform_real_distribution<double> rand_decimal(0,1);// for order
+   //std::vector<double> rand_decimals1(Nvoxel_neighbors, 0);
+   //std::vector<double> rand_decimals2(Nvoxel_neighbors, 0);
+   
+   MPI_Request halo_flux_recv_requests[4]; // four Irecv per halo
+   MPI_Request halo_flux_send_requests[4]; // four Isend per halo
+
+   MPI_Request halo_accepted_flux_recv_requests[2]; // two Irecv per halo
+   MPI_Request halo_accepted_flux_send_requests[2]; // two Isend per halo
+
+   // TODO: see if the random class may be instantiated only once
+   SPF_NS::random rr;//( 0.01, dt);
+
+   std::vector<size_t> neigh_pairs(Nvoxel_neighbors, 0);
+   neigh_pairs[0] = 1;  // x upward
+   neigh_pairs[1] = 0;  // x downward
+   size_t idx; idx = 0;
+   if ( Nvoxel_neighbors >= 2 )
+   {
+      neigh_pairs[2] = 3;  // y upward
+      neigh_pairs[3] = 2;  // y downward
+   }
+   if ( Nvoxel_neighbors >= 6 )
+   {
+      neigh_pairs[4] = 5;  // z upward
+      neigh_pairs[5] = 4;  // z downward
+   }
+
+   // variables for statistical analysis
+   double phi_local_sum; phi_local_sum = 0;
+   double phi_local_sqr_sum; phi_local_sqr_sum = 0;
+   double phi_total_sum; phi_total_sum = 0;
+   double phi_total_sqr_sum; phi_total_sqr_sum = 0;
+   double phi_mean; phi_mean = 0;
+   double phi_variance; phi_variance = 0;
+
+   ////////////////////////////////////////////////////////////////////
 
    /*-----------------------------------------------------------------*/
    /* begin loop over time -------------------------------------------*/
@@ -460,7 +550,6 @@ int main( int argc, char* argv[])
       // append fields to a file
       if ( time_step % write_period == 0 )
       {
-         // TODO: make conditional so that not every time step is written
          // write the local subset of phi to the file
          if ( append_phi_to_hdf5_multinode(
                   outFile_id,
@@ -475,9 +564,9 @@ int main( int argc, char* argv[])
                   mynode, rootnode, totalnodes, world_comm
                   ) == EXIT_FAILURE)
          {
-            failflag = -1;
+            flags.fail = -1;
          }
-         if ( check_for_failure( failflag, world_comm) )
+         if ( check_for_failure( flags, world_comm) )
          {
             if ( mynode == rootnode )
             {
@@ -515,7 +604,7 @@ int main( int argc, char* argv[])
       //   {
       //      cout << "node " << mynode << " ["; // debug
       //      for (size_t k=0; k < Nz; ++k) // debug
-      //         cout << setw(5) << phi_local[ k + Nz*(j + i*Ny) ];// debug
+      //         cout << setw(5) << phi_local[ k + Nz*(j + i*Ny) ];//debug
       //      cout << "] " << endl; // debug
       //   }
       //   cout << endl; // debug
@@ -554,11 +643,33 @@ int main( int argc, char* argv[])
       // receive inward flux from neighboring nodes
       flux_exchange_irecv(
             phi_flux_from_above,
+            phi_flux_from_above_rates,
             phi_flux_from_below,
+            phi_flux_from_below_rates,
             Ny, Nz,
             neighbor_x_higher, neighbor_x_lower, 
-            halo_recv_requests, neighbors_comm
+            halo_flux_recv_requests, neighbors_comm
             );
+
+      // NOTE:
+      // Filling is a process of varying inward flux, in which
+      //  the first passage determines which neighbor 
+      //  contributes.
+      // Emptying is a process of outward flux and distributes
+      //  among neighbors according to either the respective 
+      //  barrier height or gradient if there is no barrier.
+      // Temporal ordering of flux at both upper and lower 
+      //  bounds of voxel population requires simultaneous 
+      //  knowledge of all of the fluxes to and from a voxel, 
+      //  so a pairwise flux variable should be used.
+      // Combining outward fluxes without attention to the
+      //  upper filling limit disregards their order of 
+      //  arrival and prioritizes flux from those voxels that
+      //  happen to have their outward fluxes evaluated first.
+      // Knowledge of inward flux is required to enforce the
+      //  upper bound of a voxel's population, while knowledge
+      //  of outward flux is required to enforce the lower
+      //  bound.
 
       /****************************************************************/
       /* loop over voxels in phi_local, skipping ghosts ***************/
@@ -566,22 +677,16 @@ int main( int argc, char* argv[])
       // Local field doesn't change until after evaluating flux for 
       //  every voxel.
       
-      std::vector<size_t> neigh_idxs(6,0);   // re-used in each iteration
-      std::vector<size_t> neigh_order(6,0);   // re-used in each iteration
-      std::vector<double> jump_rates(6,0);   // re-used in each iteration 
-
-      std::uniform_real_distribution<double> rand_decimal(0,1);// for order
-      std::vector<double> rand_decimals1(6,0); // reused each reordering
-      std::vector<double> rand_decimals2(6,0); // reused each reordering
-
-      //size_t idx; // 
+      size_t idx; 
       for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
          for ( size_t jj=0; jj < Ny; ++jj)
             for ( size_t kk=0; kk < Nz; ++kk)
             {
-               // indices wrt local_change
-               size_t idx; 
+               // indices wrt local field
+               //size_t idx; 
                idx = kk + Nz*(jj + Ny*ii);
+               //std::cout << "phi_local[" << idx << "]: " // debug
+               //   << phi_local[idx] << std::endl;// debug
 
                identify_local_neighbors(
                      neigh_idxs[0], 
@@ -594,78 +699,43 @@ int main( int argc, char* argv[])
                      Ny, Nz
                      );
 
-               randomize_neighbor_order(
-                     neigh_order,
-                     rr,   // random generator
-                     rand_decimal,  // uniform_distribution<int>
-                     rand_decimals1, // reused vector, not useful outside
-                     rand_decimals2 // reused vector, not useful outside
-                     );
-
-               //conserved_gaussian_flux( 
-               //      phi_local_change,
-               //      phi_local,
-               //      rr,
-               //      rate_scale_factor,
-               //      dt,
-               //      idx,
-               //      neigh_idx_x_a,
-               //      neigh_idx_x_b,
-               //      neigh_idx_y_a,
-               //      neigh_idx_y_b,
-               //      neigh_idx_z_a,
-               //      neigh_idx_z_b,
-               //      //Nx_total,
-               //      Ny,
-               //      Nz
-               //      );
-
-               // assign values to jump_rates[]
-               for( size_t ii=0; ii < 6; ++ii)
+               // assign values to jump rates
+               for( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
                   //std::cout << "phi_local[" << idx << "]/Nv : "
                   //   << phi_local[idx]/Nv << std::endl;// debug
                   if ( phi_local[idx] > 0)
                   {
-                     jump_rates[ii] =
-                        double_well_tilted(
+                     phi_local_rates[ nn + Nvoxel_neighbors*idx ]
+                        = double_well_tilted(
                            phi_local[idx]/Nv, // convert to concentration
-                           //rate_scale_factor,
                            ww,
                            TT,
                            tilt_alpha
                            ) - 0.5*0.00008617*TT*ww;
-                     // debug
-                     //std::cout << "jump_rates[" << ii << "]: " << jump_rates[ii] 
-                     //   << ", phi_local[" << idx << "] :" << phi_local[idx] << std::endl;
 
-                     jump_rates[ii] *= Nv;// convert to # walkers
+                     // convert to # walkers
+                     phi_local_rates[ nn + Nvoxel_neighbors*idx ] *= Nv;
                   }
                   else
-                     jump_rates[ii] = 0;
+                     phi_local_rates[nn + Nvoxel_neighbors*idx] = 0;
                }
 
-               // evaluate stochastic changes to this and neighboring cells
+
+               // evaluate stochastic fluxes to neighbor cells
                conserved_jump_flux_separate_distributions( 
-                     phi_local_change,
-                     phi_local,
+                     phi_local_flux,
                      rr,
-                     jump_rates, // in units of # of walkers
-                     dt, 
-                     //rate_scale_factor,
-                     idx,
-                     neigh_idxs,
-                     neigh_order,
-                     Nv,
-                     Ny,
-                     Nz
+                     phi_local_rates,
+                     dt,
+                     Nvoxel_neighbors,
+                     idx
                      );
 
                //conserved_jump_flux_singl_distribution( 
                //      phi_local_change,
                //      phi_local,
                //      rr,
-               //      rate_scale_factor,
                //      dt,
                //      idx,
                //      neigh_idx_x_a,
@@ -735,41 +805,50 @@ int main( int argc, char* argv[])
                //      phi_local, 
                //      ii, jj, kk, Nx_total, Ny, Nz);
 
-               // debug
-               //if( phi_local_change[idx] + phi_local[idx] > Nv)
-               //{
-               //   std::cout << "Warning: about to increase population of"
-               //      << " voxel " << idx << " to " 
-               //      << phi_local_change[idx] + phi_local[idx] 
-               //      << " > Nv " << Nv 
-               //      << " ; cause is before communication" << std::endl;
-               //}
-               // end debug
+
+               // Copy outward flux to be sent to neighboring nodes.
+               // Also copy flux rates, to order inward flux to 
+               //  neighboring node voxels.
+
+               if (ii == 1 )  // lower x-axis boundary of non-ghosts
+               {
+                  phi_flux_downward[  kk + Nz*jj] 
+                     = phi_local_flux[ 0+ Nvoxel_neighbors * idx ]; 
+                  // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+
+                  phi_flux_downward_rates[kk + Nz*jj] 
+                     = phi_local_rates[0 + Nvoxel_neighbors * idx];
+               }
+               if (ii == Nx_local) // upper x-axis boundary of non-ghosts
+               {
+                  phi_flux_upward[ kk + Nz*jj] 
+                     = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
+
+                  phi_flux_upward_rates[kk + Nz*jj] 
+                     = phi_local_rates[1 + Nvoxel_neighbors * idx];
+               }
             }
 
       /* end loop over voxels *****************************************/
       /****************************************************************/
       
       //////////////////////////////////////////////////////////////////
-      // evaluate outward flux to neighboring nodes 
-      for (size_t jj=0; jj < Ny; ++jj)
-         for (size_t kk=0; kk < Nz; ++kk)
-         {
-            phi_flux_downward[kk + Nz*jj] 
-               = phi_local_change[kk + Nz*(jj + Ny*(0))];
-            phi_flux_upward[kk + Nz*jj] 
-               = phi_local_change[kk + Nz*(jj + Ny*(Nx_local+1))];
-         }
-      //size_t iii; iii = 1;
-      //size_t iiii; iiii = Nx_local;
+      // copy outward flux to be sent to neighboring nodes 
+      //for (size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+
       //for (size_t jj=0; jj < Ny; ++jj)
       //   for (size_t kk=0; kk < Nz; ++kk)
-      //   {
-      //      phi_flux_downward[kk + Nz*jj] 
-      //         = 0.01*phi_local[kk + Nz*(jj + Ny*iii)];
-      //      phi_flux_upward[kk + Nz*jj] 
-      //         = 0.01*phi_local[kk + Nz*(jj + Ny*iiii)];
-      //   }
+      //{// one flux up and one down for each boundary voxel
+      //   phi_flux_downward[  kk + Nz*jj] 
+      //      = phi_local_flux[ // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+      //            0+ Nvoxel_neighbors*(kk + Nz*(jj+ Ny*0))
+      //           ];
+
+      //   phi_flux_upward[ kk + Nz*jj] 
+      //      = phi_local_flux[ 
+      //            1+ Nvoxel_neighbors*(kk + Nz*(jj+ Ny*(Nx_local+1)))
+      //           ];
+      //}
 
       //for (size_t jj=0; jj < Ny; ++jj) // debug
       //{ // debug
@@ -785,8 +864,8 @@ int main( int argc, char* argv[])
       //   cout << "node " << mynode << " sending downward [ "; // debug
       //   for (size_t kk=0; kk < Nz; ++kk) // debug
       //   { // debug
-      //  //cout << setw(5) << phi_flux_upward[kk + Nz*jj] << ", " // debug
-      //  cout << setw(5) << phi_flux_downward[kk + Nz*jj] << ", ";// debug
+      //  //cout << setw(5) << phi_flux_upward[kk+Nz*jj] << ", "// debug
+      //  cout << setw(5) << phi_flux_downward[kk+Nz*jj] << ", ";// debug
       //   } // debug
       //   cout << "]" << endl; // debug
       //} // debug
@@ -796,10 +875,12 @@ int main( int argc, char* argv[])
       // send outward flux to neighboring nodes
       flux_exchange_isend(
          phi_flux_upward, // Ny*Nz
+         phi_flux_upward_rates, // Ny*Nz
          phi_flux_downward, // Ny*Nz
+         phi_flux_downward_rates, // Ny*Nz
          Ny, Nz,
          neighbor_x_higher, neighbor_x_lower, 
-         halo_send_requests, neighbors_comm
+         halo_flux_send_requests, neighbors_comm
          );
 
       //for (size_t jj=0; jj < Ny; ++jj) // debug
@@ -823,6 +904,8 @@ int main( int argc, char* argv[])
       //} // debug
       //////////////////////////////////////////////////////////////////
 
+      MPI_Waitall(4, halo_flux_recv_requests, MPI_STATUSES_IGNORE);
+
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values
       //cout << "node " << mynode // debug
@@ -841,96 +924,257 @@ int main( int argc, char* argv[])
       //   cout << endl; // debug
       //} // debug
       //cout << endl;// debug
-      MPI_Waitall(2, halo_recv_requests, MPI_STATUSES_IGNORE);
+
+      // copy flux from other nodes into phi_local_flux
+      for (size_t jj=0; jj < Ny; ++jj)
+         for( size_t kk=0; kk < Nz; ++kk)
+         {
+            // flux to lower neighbor of upper ghost along x-axis
+            // ghost x_idx = Nx_local+1; ghost neigh_idx = 0 (x-)
+            idx = 0 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(Nx_local+1)));
+            phi_local_flux[ idx ] 
+               = phi_flux_from_above[kk + Nz*jj];
+
+            phi_local_rates[ idx ]
+               = phi_flux_from_above_rates[kk + Nz*jj];
+
+            // flux to upper neighbor of lower ghost along x-axis
+            // ghost x_idx = 0; ghost neigh_idx = 1 (x+)
+            idx = 1 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*0));
+            phi_local_flux[ idx ]
+               = phi_flux_from_below[kk + Nz*jj];
+
+            phi_local_rates[ idx ]
+               = phi_flux_from_below_rates[kk + Nz*jj];
+         }
+
+      // TODO: enforce_field_bounds( field, flux )
+      //        using phi_local_flux[] for flux magnitudes
+      //        and phi_local_rates[] for balancing those magnitudes
+      //        saving acceptable fluxes in phi_local_flux
+      // Considered as an outward flux, neighbor orders are 
+      //  equally balanced (assuming equal barrier heights).
+      // But when considered as an inward flux, the neighbor
+      //  orders may be balanced using first passage 
+      //  distributions.
+
+      //randomize_neighbor_order(
+      //      neigh_order,
+      //      rr,   // random generator
+      //      rand_decimal,  // uniform_distribution<int>
+      //      rand_decimals1,// reused vector, not useful outside
+      //      rand_decimals2, // reused vector, not useful outside
+      //      flags
+      //      );
+
+      enforce_bounds_generic(
+            // updates phi_local_flux with acceptable flux values
+            phi_local_flux,
+            phi_local,
+            phi_local_rates,
+            rr,
+            // neigh_order,
+            Nvoxel_neighbors,
+            phi_lower_limit,
+            phi_upper_limit,
+            Nx_local, Ny, Nz,
+            eps,
+            flags
+            );
+
+      // Update phi_flux_from_below / above with accepted rates 
+      //        from ghosts residing in phi_local_flux
       for (size_t jj=0; jj < Ny; ++jj)
          for (size_t kk=0; kk < Nz; ++kk)
          {
-            phi_local_change[ kk + Nz*(jj + Ny*( 1 ))]
-               += phi_flux_from_below[ kk + Nz*jj ];
-            phi_local_change[ kk + Nz*(jj + Ny*( Nx_local ))]
-               += phi_flux_from_above[ kk + Nz*jj ];
+            idx = 0 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(Nx_local+1)));
+            phi_flux_from_above[kk + Nz*jj]
+               = phi_local_flux[ idx ];
+
+            idx = 1 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*0));
+            phi_flux_from_below[kk + Nz*jj]
+               = phi_local_flux[ idx ];
          }
-      //// debug
-      //cout 
-      //   << "node " << mynode 
-      //   << " phi_local_change[i][j][] : [";
-      //   for (size_t ii=0; ii < Nx_local; ++ii)
-      //      for (size_t jj=0; jj < Ny; ++jj)
-      //      {
-      //         for (size_t kk=0; kk < Nz; ++kk)
-      //            cout << phi_local_change[kk + Nz*(jj + Ny*ii)] << ", ";
-      //         cout << "]" << endl;
-      //      }
 
-      //// end debug
+      // send accepted flux values back to sources
+      flux_accepted_isend(
+            phi_flux_from_above, // Ny*Nz
+            phi_flux_from_below, // Ny*Nz
+            Ny,
+            Nz,
+            neighbor_x_higher,
+            neighbor_x_lower, 
+            halo_accepted_flux_send_requests, // two Isend per halo
+            neighbors_comm
+            );
 
-      // add field changes to the field and reset field changes to 0
-      //cout << "local data before adding change : " ;// debug
-            //cout << "node " << mynode << " ["; // debug
-               // cout << setw(10) << phi_local[ kk + Nz*(jj + Ny*(ii+1))]; // debug
-               //cout << " + " << setw(8) << phi_local_change[ kk + Nz*(jj + Ny*ii) ]; // debug
-               //cout << " =" << setw(10) << phi_local[ kk + Nz*(jj + Ny*(ii+1))]; // debug
-               //phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
-            //cout << "]" << endl; // debug
+      MPI_Waitall(4, halo_flux_send_requests, MPI_STATUSES_IGNORE);
 
-      for (size_t ii=1; ii < Nx_local+1; ++ii)
-      {
-         for (size_t jj=0; jj < Ny; ++jj)
+      flux_accepted_irecv(
+            phi_flux_downward,
+            phi_flux_upward,
+            Ny,
+            Nz,
+            neighbor_x_higher,
+            neighbor_x_lower,
+            halo_accepted_flux_recv_requests,
+            neighbors_comm
+            );
+
+      // wait for accepted fluxes to be received
+      MPI_Waitall(2, halo_accepted_flux_recv_requests, 
+                  MPI_STATUSES_IGNORE);
+
+      // return the accepted outward fluxes to their orgin flux variable
+      for (size_t jj=0; jj < Ny; ++jj)
+         for (size_t kk=0; kk < Nz; ++kk)
          {
-            for (size_t kk=0; kk < Nz; ++kk)
+            // Reduce the upward or downward flux to ghosts only if
+            //  the neighboring node requests smaller values than 
+            //  determined by the local node's boundary enforcement.
+            idx = 0 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(1)));
+            if ( phi_flux_downward[kk + Nz*jj] < phi_local_flux[ idx ] )
             {
-               phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
-                  += phi_local_change[ kk + Nz*(jj + Ny*ii) ];
-               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] > Nv) 
+               phi_local_flux[ idx ] = phi_flux_downward[kk + Nz*jj];
+            }
+
+            idx = 1 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(Nx_local)));
+            if ( phi_flux_upward[kk + Nz*jj] < phi_local_flux[ idx ] )
+            {
+               phi_local_flux[ idx ]
+                  = phi_flux_upward[kk + Nz*jj];
+            }
+            // After this loop, both local voxels and neighbor's ghosts
+            //  should contain the smaller of the fluxes determined by
+            //  both nodes, to prevent both over filling and 
+            //  over drawing.
+         }
+
+      // Update phi_local by applying the accepted fluxes
+      for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
+         for ( size_t jj=0; jj < Ny; ++jj)
+            for ( size_t kk=0; kk < Nz; ++kk)
+            {
+               idx = kk + Nz*(jj + Ny*ii);
+
+               identify_local_neighbors(
+                     neigh_idxs[0], 
+                     neigh_idxs[1], 
+                     neigh_idxs[2], 
+                     neigh_idxs[3], 
+                     neigh_idxs[4],
+                     neigh_idxs[5],
+                     ii, jj, kk,
+                     Ny, Nz
+                     );
+
+               // Subtract outward flux from each voxel (phi_local)
+               for(size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
-                  std::cout << "node " << mynode 
-                     << "warning : phi_local[" 
-                     << kk + Nz*(jj + Ny*(ii)) << "] == "
-                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
-                     << " >Nv; user should reduce dt; setting this phi_local[]=Nv" << std::endl;
-                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = Nv;
+                  phi_local[idx] 
+                     -= phi_local_flux[nn + Nvoxel_neighbors*idx];
                }
-               if( phi_local[ kk + Nz*(jj + Ny*(ii)) ] < 0) 
+
+               // check to ensure enforce_bounds_generic worked
+               if ( phi_local[idx] < phi_lower_limit )
                {
-                  std::cout << "node " << mynode 
-                     << "warning : phi_local[" 
-                     << kk + Nz*(jj + Ny*(ii)) << "] == "
-                     << phi_local[ kk + Nz*(jj + Ny*(ii)) ] 
-                     << " <0; user should reduce dt; setting this phi_local[]=0" << std::endl;
-                     phi_local[ kk + Nz*(jj + Ny*(ii)) ] = 0;
+                  //if ( abs(phi_local[idx] - phi_lower_limit - outward_flux)
+                  //      > (eps.dblsqrt 
+                  //            * (phi_local[idx] - phi_lower_limit)))
+                  //std::cout << "Warning: step " 
+                  //      << time_step 
+                  //      << " flux out of voxel caused lower bound breach"
+                  //      << " phi_local[" << idx << "]: "
+                  //      << phi_local[idx] 
+                  //      << ", eps.dbl " 
+                  //      << eps.dbl 
+                  //      << ", (phi_local[]-phi_lower_limit) "
+                  //      << (phi_local[idx]-phi_lower_limit)
+                  //      << ", setting phi_local to its lower limit"
+                  //      << std::endl;
+
+                  // debug
+                  //std::cout << "outward fluxes: ";
+                  //for(size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  //{
+                  //   std::cout 
+                  //      << phi_local_flux[nn + Nvoxel_neighbors*idx]
+                  //      << ", ";
+                  //}
+                  //std::cout << std::endl;
+                  //if ( ii == 1 )
+                  //{
+                  //   std::cout << "phi_flux_downward[" << kk + Nz*jj 
+                  //      << "] : " << phi_flux_downward[kk + Nz*jj ]
+                  //      << std::endl;
+                  //   std::cout << "phi_flux_from_above[" << kk + Nz*jj 
+                  //      << "] : " << phi_flux_from_above[kk + Nz*jj ]
+                  //      << std::endl;
+                  //}
+                  //if ( ii == Nx_local )
+                  //{
+                  //   std::cout << "phi_flux_upward[" << kk + Nz*jj 
+                  //      << "] : " << phi_flux_upward[kk + Nz*jj ]
+                  //      << std::endl;
+                  //   std::cout << "phi_flux_from_below[" << kk + Nz*jj 
+                  //      << "] : " << phi_flux_from_below[kk + Nz*jj ]
+                  //      << std::endl;
+                  //}
+                  // end debug
+
+                  phi_local[idx] = phi_lower_limit;
+               }
+
+               // Add inward flux to phi_local
+               for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+               {
+                  phi_local[idx]
+                     += phi_local_flux[
+                           neigh_pairs[nn] 
+                              + Nvoxel_neighbors * neigh_idxs[nn]
+                        ];
+               }
+
+               if ( phi_local[idx] > phi_upper_limit )
+               {
+                  if ((flags.debug != 0) && (mynode == rootnode))
+                  {
+                     std::cout << "Warning: step " 
+                        << time_step 
+                        << " flux into voxel caused upper bound breach"
+                        << " phi_local[" << idx << "]: "
+                        << phi_local[idx] 
+                        // << " setting phi_localto its upper limit"
+                        << std::endl;
+                  }
+                  phi_local[idx] = phi_upper_limit;
                }
             }
-         }
-      }
-      //for ( size_t ii=0; ii < Nx_local+2; ++ii)
-      //   for (size_t jj=0; jj < Ny; ++jj)
-      //      for (size_t kk=0; kk < Nz; ++kk)
-      //         phi_local_change[ kk + Nz*(jj + Ny*ii) ] = 0.0;
-      for (std::vector<double>::iterator itr = phi_local_change.begin();
-            itr != phi_local_change.end(); ++itr) *itr = 0.0;
+      // end of loop over non-ghosts
 
-      //cout << "node " << mynode // debug
-      // << " local data after adding neighbor flux:" // debug
-      //   << endl;//debug
-      //for (size_t i=0; i < (Nx_local +2); ++i) // debug
-      //{ // debug
-      //   for (size_t j=0; j < Ny; ++j) // debug
+      //if ( flags.debug != 0 )
+      //{
+      //   cout << "node " << mynode // debug
+      //    << " local data after adding neighbor flux:"
+      //      << endl;//debug
+      //   for (size_t i=0; i < (Nx_local +2); ++i)
       //   {
-      //      cout << "node " << mynode << " ["; // debug
-      //      for (size_t k=0; k < Nz; ++k) // debug
-      //         cout << setw(9) << phi_local[ k + Nz*(j + i*Ny) ];// debug
-      //      cout << "] " << endl; // debug
+      //      for (size_t j=0; j < Ny; ++j)
+      //      {
+      //         cout << "node " << mynode << " [";
+      //         for (size_t k=0; k < Nz; ++k)
+      //            cout << setw(9) << phi_local[ k + Nz*(j + i*Ny) ];
+      //         cout << "] " << endl;
+      //      }
+      //      cout << endl;
       //   }
-      //   cout << endl; // debug
-      //} // debug
-      //cout << endl;// debug
+      //   cout << endl;
+      //}
       //////////////////////////////////////////////////////////////////
-
-      MPI_Waitall(2, halo_send_requests, MPI_STATUSES_IGNORE);
 
       /////////////////////////////////////////////////////////////////
       // calculate mean and variance of all voxel populations
-      if ( flag_calcstat )
+      if ( flags.calcstat != 0 )
       {
          for (size_t ii=1; ii < Nx_local+1; ++ii)
          {
@@ -965,7 +1209,7 @@ int main( int argc, char* argv[])
          {
             //cout << "time_step: " << time_step  // debug
             //   << ", (phi_mean, phi_variance): (" // debug
-            //   << phi_mean << ", " << phi_variance << ")" << endl;//debug
+            //  << phi_mean << ", " << phi_variance << ")" << endl;//debug
          
             if (stat_file.good())
             {
@@ -987,6 +1231,12 @@ int main( int argc, char* argv[])
          phi_local_sqr_sum = 0.0;
          /////////////////////////////////////////////////////////////////
       }
+
+      // wait for remainders to be sent
+      MPI_Waitall(2, halo_accepted_flux_send_requests, 
+                     MPI_STATUSES_IGNORE);
+      //// end debug
+
    }
    /*-----------------------------------------------------------------*/
    /* end loop over time ---------------------------------------------*/
@@ -1012,6 +1262,7 @@ int main( int argc, char* argv[])
       time_t end_time;
       std::time(&end_time);
       log_file << "End " << std::ctime(&end_time) << endl;
+      //log_file << endl;
       log_file.close();
    }
    ////////////////////////////////////////////////////////////////////

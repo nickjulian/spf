@@ -130,6 +130,10 @@ int SPF_NS::read_parameter_file(
          {
             flags.calcstat = 1;
          }
+         else if (! line_chunk.compare("-debug") )
+         {
+            flags.debug = 1;
+         }
          else
          {
             if ( mynode == rootnode )

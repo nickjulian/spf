@@ -21,6 +21,8 @@ struct int_flags
    unsigned int input_field;
    unsigned int calcstat;
    unsigned int parameter_file;
+   unsigned int debug;
+   unsigned int fail;
 
    int_flags() // constructor
    {
@@ -32,6 +34,8 @@ struct int_flags
       input_field = 0;
       calcstat = 0;
       parameter_file = 0;
+      debug = 0;
+      fail = 0;
    }
 };
 } // SPF_NS

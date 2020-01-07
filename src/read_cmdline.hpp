@@ -68,5 +68,17 @@ int read_cmdline_options(
       string& input_field_name
       );
 
+int read_cmdline_options_for_escape_time_ensembles(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      size_t& Nensemble,
+      double& rate_scale_factor,
+      int_flags& flags,
+      string& output_prefix,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      );
 } // SPF_NS
 #endif

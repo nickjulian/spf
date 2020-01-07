@@ -700,6 +700,8 @@ int main( int argc, char* argv[])
                      );
 
                // assign values to jump rates
+               double upward_shift;
+               upward_shift = -0.5*0.00008617*TT*ww;
                for( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
                   //std::cout << "phi_local[" << idx << "]/Nv : "
@@ -709,10 +711,11 @@ int main( int argc, char* argv[])
                      phi_local_rates[ nn + Nvoxel_neighbors*idx ]
                         = double_well_tilted(
                            phi_local[idx]/Nv, // convert to concentration
+                           upward_shift,
                            ww,
                            TT,
                            tilt_alpha
-                           ) - 0.5*0.00008617*TT*ww;
+                           );// - 0.5*0.00008617*TT*ww;
 
                      // convert to # walkers
                      phi_local_rates[ nn + Nvoxel_neighbors*idx ] *= Nv;
@@ -967,11 +970,30 @@ int main( int argc, char* argv[])
       //      flags
       //      );
 
-      enforce_bounds_generic(
+      // enforce_bounds_generic renormalizes excessive loss to available
+      //  walkers, and excessive gain flux to their rates.
+      //  Neither method guarantees that rounding the results will 
+      //  yield the same total number of walkers lost or gained.
+      //enforce_bounds_generic(
+      //      // updates phi_local_flux with acceptable flux values
+      //      phi_local_flux,
+      //      phi_local,
+      //      phi_local_rates,
+      //      rr,
+      //      // neigh_order,
+      //      Nvoxel_neighbors,
+      //      phi_lower_limit,
+      //      phi_upper_limit,
+      //      Nx_local, Ny, Nz,
+      //      eps,
+      //      flags
+      //      );
+
+      enforce_bounds_int(
             // updates phi_local_flux with acceptable flux values
-            phi_local_flux,
-            phi_local,
-            phi_local_rates,
+            phi_local_flux,   // integers
+            phi_local,        // integers
+            phi_local_rates,  // not necessarily integers
             rr,
             // neigh_order,
             Nvoxel_neighbors,
@@ -981,6 +1003,8 @@ int main( int argc, char* argv[])
             eps,
             flags
             );
+
+      // 
 
       // Update phi_flux_from_below / above with accepted rates 
       //        from ghosts residing in phi_local_flux

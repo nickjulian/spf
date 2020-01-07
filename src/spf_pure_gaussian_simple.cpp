@@ -1205,24 +1205,24 @@ int main( int argc, char* argv[])
             }
       // end of loop over non-ghosts
 
-      if ( flags.debug != 0 )
-      {
-         cout << "node " << mynode // debug
-          << " local data after adding neighbor flux:"
-            << endl;//debug
-         for (size_t i=0; i < (Nx_local +2); ++i)
-         {
-            for (size_t j=0; j < Ny; ++j)
-            {
-               cout << "node " << mynode << " [";
-               for (size_t k=0; k < Nz; ++k)
-                  cout << setw(9) << phi_local[ k + Nz*(j + i*Ny) ];
-               cout << "] " << endl;
-            }
-            cout << endl;
-         }
-         cout << endl;
-      }
+      //if ( flags.debug != 0 )
+      //{
+      //   cout << "node " << mynode // debug
+      //    << " local data after adding neighbor flux:"
+      //      << endl;//debug
+      //   for (size_t i=0; i < (Nx_local +2); ++i)
+      //   {
+      //      for (size_t j=0; j < Ny; ++j)
+      //      {
+      //         cout << "node " << mynode << " [";
+      //         for (size_t k=0; k < Nz; ++k)
+      //            cout << setw(9) << phi_local[ k + Nz*(j + i*Ny) ];
+      //         cout << "] " << endl;
+      //      }
+      //      cout << endl;
+      //   }
+      //   cout << endl;
+      //}
       //////////////////////////////////////////////////////////////////
 
       /////////////////////////////////////////////////////////////////

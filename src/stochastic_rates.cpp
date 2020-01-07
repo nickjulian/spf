@@ -46,6 +46,7 @@ double SPF_NS::double_well_tilted(
       //const std::vector<double>& local_field,
       const double& xx, // local_field[idx],
       //const double& rate_scale_factor,
+      const double& upward_shift,
       const double& ww,
       const double& TT,
       const double& alpha
@@ -53,10 +54,11 @@ double SPF_NS::double_well_tilted(
       )
 {
    if (xx <= 0.0 ) return 0.0; // this is probably bad
-   if (xx >= 1.0 ) return 1E20;  // huge number
+   if (xx >= 1.0 ) return 1E10;  // huge number
    // \omega(2x-1)+k_{B}T[\alpha ln(x/(1-x))+(alpha-1)/(1-x)]
-   return ww *(2*xx -1) + (0.00008617)*TT*(
-               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx));
+   return ww *(2*xx -1) + 0.00008617*TT*(
+                  alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)
+               ) + upward_shift;
 }
 
 double SPF_NS::double_well_tilted_derivative(
@@ -64,6 +66,7 @@ double SPF_NS::double_well_tilted_derivative(
       //const std::vector<double>& local_field,
       const double& xx, // local_field[idx],
       //const double& rate_scale_factor,
+      const double& upward_shift,
       const double& ww,
       const double& TT,
       const double& alpha
@@ -71,7 +74,7 @@ double SPF_NS::double_well_tilted_derivative(
       )
 {
    if (xx <= 0.0 ) return 0.0; // this is probably bad
-   if (xx >= 1.0 ) return -1E20;  // huge negative number
+   if (xx >= 1.0 ) return -1E10;  // huge negative number
    //double xx; xx = local_field[idx];
    // 2*\omega+k_{B}T[(\alpha/x) + (\alpha/(1-x)) - (\alpha -1)/((1-x)^{2})]
    //if ( (xx == 0.0 ) || (xx == 1.0))
@@ -82,8 +85,16 @@ double SPF_NS::double_well_tilted_derivative(
    //   return xx;
    //}
    double sigma;
-   sigma = sqrt(ww *(2*xx -1) + (0.00008617)*TT*(
-               alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)));
+   double tmpdbl;
+   tmpdbl = ww *(2*xx -1) + (0.00008617)*TT*(
+                  alpha * log(xx/(1.0 - xx)) + (alpha -1)/(1 - xx)
+               )
+               + upward_shift;
+   if ( tmpdbl > 0 ) sigma = sqrt( tmpdbl );
+   else if (tmpdbl <= 0.0)
+   { // chemical potential is < 0; the rate has been set to 0 elsewhere
+      return 0.0;
+   }
 
    return ((0.5/sigma)
       *(2.0*ww + (0.00008617)*TT*( 

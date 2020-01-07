@@ -11,10 +11,9 @@
 #include "writeHDF5c.hpp"
 #include "rand.hpp"
 #include "read_cmdline.hpp"
+#include "flags.hpp"
 
 // TODO: execute an ensemble of trajectories having uniformly distributed initial positions, ending each path when it reaches some maximum value and save these first exit times to a file for external analysis
-
-//#define PRINT_USAGE cout << "Usage: " << argv[0] << " <OPTIONS>" << endl << "OPTIONS : " << endl << "   -i <input field hdf5 file>" << endl << "   -o <output file prefix>" << endl << "   -Nt <number of time steps>" << endl << "   [-dt <time increment>]" << endl << "   [-r <rate scale factor>]" << endl << "   [-wp <steps between file writes>]" << endl << "   [-stat]"<< endl;
 
 using std::cout;
 using std::endl;
@@ -27,10 +26,8 @@ using namespace SPF_NS;
 int main( int argc, char* argv[])
 {
    double rate_scale_factor; rate_scale_factor = 1.0;
-   double scalar_integrand;
-   bool flag_calcstat;
+   int_flags flags;
    string output_prefix;
-   string input_field_name;
    
    // increments
    double dt, sqrtdt; 
@@ -38,25 +35,26 @@ int main( int argc, char* argv[])
    //size_t Nensemble; Nensemble = 1000;
    //size_t Nensemble; Nensemble = 10;
    //size_t Nensemble; Nensemble = 1;
-   int Nt, write_period;
+   int Nt;
    //double dx, dy, dz;
 
    std::vector<string> args( argv, argv + argc );
 
-   if (read_cmdline_options(
+   if (read_cmdline_options_for_escape_time_ensembles(
          args,
          dt,
          Nt,
-         scalar_integrand,
-         rate_scale_factor,
-         write_period,
-         flag_calcstat,
-         output_prefix,
-         input_field_name
-            ) != EXIT_SUCCESS )
+         Nensemble,
+         flags,
+         output_prefix
+         //mynode,
+         //rootnode,
+         //MPI_COMM_WORLD
+         ) != EXIT_SUCCESS )
    {
-      cout << "Error: failed to read cmdline arguments" << endl;
-      PRINT_USAGE;
+      if ( mynode == rootnode ) PRINT_USAGE;
+
+      MPI_Finalize();
       return EXIT_FAILURE;
    }
 
@@ -76,25 +74,28 @@ int main( int argc, char* argv[])
    // random generator
    SPF_NS::random rr;
 
+   // stochastic distributions
+   //std::poisson_distribution<int> pd( p_rate );
+   std::exponential_distribution<double> ed( p_rate );
+   std::exponential_distribution<double> ed_mu0( p_rate_mu0 );
+   std::bernoulli_distribution bd( 0.5 );
+
+   // time variables
+   std::vector<double> Pt;
+   std::vector<double> Wt;
+   std::vector<double> Pt_mu0;
+   std::vector<double> Wt_drift;
+
+   //std::list<std::vector<double>*> Pp;
+   //std::list<std::vector<double>*> Xp; // dX(t) is the SDE driven by dP(t)
+   //std::list<std::vector<double>*> Xp_exact;// path according to analysis
+   
    // Poisson processes
    double p_dt;
    double p_f_dt, p_b_dt;
    int dP; dP = 1.0;
    int dP_f, dP_b;
 
-   //std::poisson_distribution<int> pd( p_rate );
-   std::exponential_distribution<double> ed( p_rate );
-   std::exponential_distribution<double> ed_mu0( p_rate_mu0 );
-   std::bernoulli_distribution bd( 0.5 );
-
-   std::vector<double> Pt;
-   std::vector<double> Wt;
-   std::vector<double> Pt_mu0;
-   std::vector<double> Wt_drift;
-   //std::list<std::vector<double>*> Pp;
-   //std::list<std::vector<double>*> Xp; // dX(t) is the SDE driven by dP(t)
-   //std::list<std::vector<double>*> Xp_exact;// path according to analysis
-   
    // Wiener processes
    double dW;
    std::normal_distribution<double> gd( 0.0, 1.0);//); // (mean, stddev)
@@ -110,7 +111,7 @@ int main( int argc, char* argv[])
    //std::vector<double> Xx_exact_ptr;
 
 
-   //cout << "(scalar_integrand, rate) : (" << scalar_integrand << ", " << rate << ")" << endl; // debug
+   //cout << " rate : "  << rate << endl; // debug
 
    double w_init; w_init = 5.0;
    double w_lb; w_lb = 0.0;
@@ -164,7 +165,7 @@ int main( int argc, char* argv[])
          // g'(x) = d/dx g(x) = 0
          // f(x) = drift
          dW = gd( rr.generator );
-         Ww += (scalar_integrand * sqrtdt 
+         Ww += (sqrtdt 
                  //* dW); // + 0, since g'(x) =0
                  * w_sqrtrate * dW); // + 0, since g'(x) =0
 
@@ -187,7 +188,7 @@ int main( int argc, char* argv[])
          // g'(x) = d/dx g(x) = 0
          // f(x) = drift
          dW = gd( rr.generator );
-         Ww_drift += (drift * dt) + (scalar_integrand * sqrtdt 
+         Ww_drift += (drift * dt) + (sqrtdt 
                  * w_sqrtrate * dW); // + 0, since g'(x) =0
 
          if ( Ww_drift > p_ub )//|| Ww_drift < p_lb )
@@ -219,7 +220,7 @@ int main( int argc, char* argv[])
          //}
          Pp += dP;
          //Pp_ptr->push_back( (*Pp_ptr)[ Pp_ptr->size() -1]
-         //                     + (scalar_integrand * p_dt * dP) );
+         //                     + (p_dt * dP) );
          tt  += p_dt;
          if ( Pp > p_ub ) //|| Pp < p_lb ) 
          {
@@ -264,25 +265,25 @@ int main( int argc, char* argv[])
    // text file output
    ofstream out_text_file_w;
    out_text_file_w.open(output_prefix + "_Nens" + std::to_string(Nensemble)
-         + "_escape_times_w.txt", ios::app | ios::ate);
+         + "_1d_escape_times_w.txt", ios::app | ios::ate);
 
    ofstream out_text_file_p;
    out_text_file_p.open(output_prefix + "_Nens" + std::to_string(Nensemble)
-         + "_escape_times_p.txt", ios::app | ios::ate);
+         + "_1d_escape_times_p.txt", ios::app | ios::ate);
 
    ofstream out_text_file_w_drift;
    out_text_file_w_drift.open(output_prefix + "_Nens" + std::to_string(Nensemble)
-         + "_escape_times_w_drift.txt", ios::app | ios::ate);
+         + "_1d_escape_times_w_drift.txt", ios::app | ios::ate);
 
    ofstream out_text_file_p_mu0;
    out_text_file_p_mu0.open(output_prefix + "_Nens" + std::to_string(Nensemble)
-         + "_escape_times_p_mu0.txt", ios::app | ios::ate);
+         + "_1d_escape_times_p_mu0.txt", ios::app | ios::ate);
 
    if ( ! out_text_file_p.good() )
    {
       cout << "warning: could not open output file: "
             << output_prefix + "_Nens" + std::to_string(Nensemble) 
-               +  "_escape_times_p.txt" << endl;
+               +  "_1d_escape_times_p.txt" << endl;
       out_text_file_p.close();
       return EXIT_FAILURE;
    }
@@ -291,7 +292,7 @@ int main( int argc, char* argv[])
    {
       cout << "warning: could not open output file: "
             << output_prefix + "_Nens" + std::to_string(Nensemble) 
-               +  "_escape_times_w.txt" << endl;
+               +  "_1d_escape_times_w.txt" << endl;
       out_text_file_w.close();
       return EXIT_FAILURE;
    }
@@ -300,7 +301,7 @@ int main( int argc, char* argv[])
    {
       cout << "warning: could not open output file: "
             << output_prefix + "_Nens" + std::to_string(Nensemble) 
-               +  "_escape_times_p_mu0.txt" << endl;
+               +  "_1d_escape_times_p_mu0.txt" << endl;
       out_text_file_p_mu0.close();
       return EXIT_FAILURE;
    }
@@ -309,7 +310,7 @@ int main( int argc, char* argv[])
    {
       cout << "warning: could not open output file: "
             << output_prefix + "_Nens" + std::to_string(Nensemble) 
-               +  "_escape_times_w_drift.txt" << endl;
+               +  "_1d_escape_times_w_drift.txt" << endl;
       out_text_file_w_drift.close();
       return EXIT_FAILURE;
    }

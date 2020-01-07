@@ -45,6 +45,22 @@ namespace SPF_NS
          int_flags& flags
          );
 
+   int enforce_bounds_int(
+         std::vector<double>& phi_local_flux,   // integers
+         const std::vector<double>& phi_local,  // integers
+         const std::vector<double>& phi_local_rates,  // doubles
+         SPF_NS::random& rr,
+         //const std::vector<size_t>& neigh_order,
+         const size_t& Nvoxel_neighbors,
+         const double& phi_lower_limit,
+         const double& phi_upper_limit,
+         const int& Nx_local,
+         const int& Ny,
+         const int& Nz,
+         const epsilon& eps,
+         int_flags& flags
+         );
+
    //int conserved_gaussian_flux( 
    //int conserved_gaussian_flux_single_distribution_stratonovich(
    //int conserved_gaussian_flux_separate_distributions(

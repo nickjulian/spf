@@ -9,7 +9,7 @@
 #include <cstdlib>   // EXIT_SUCCESS, EXIT_FAILURE
 #include <vector>
 #include <string>
-#include <math.h> // floor
+#include <math.h> // floor, isnan
 #include <time.h> // time_t, time, ctime
 
 #include <mpi.h>
@@ -704,6 +704,8 @@ int main( int argc, char* argv[])
                      );
 
                // assign values to jump_rates[]
+               double upward_shift;
+               upward_shift = -0.5*0.00008617*TT*ww;
                for( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
                   //std::cout << "phi_local[" << idx << "]/Nv : "
@@ -713,35 +715,70 @@ int main( int argc, char* argv[])
                      phi_local_rates_sqrt[ nn + Nvoxel_neighbors*idx ]
                         = double_well_tilted(
                            phi_local[idx],
+                           upward_shift,
                            ww,
                            TT,
                            tilt_alpha
-                           ) - 0.5*0.00008617*TT*ww;
+                           );//- 0.5*0.00008617*TT*ww;
                      // TODO: make the above shift tunable
 
                      if ( phi_local_rates_sqrt[
                               nn + Nvoxel_neighbors*idx
                            ] > 0 )
+                     {
                         phi_local_rates_sqrt[
                               nn + Nvoxel_neighbors*idx
                            ] 
                            = sqrt(phi_local_rates_sqrt[
                                  nn + Nvoxel_neighbors*idx
                               ]);
+                     }
                      else
+                     {
                         phi_local_rates_sqrt[
                                  nn + Nvoxel_neighbors*idx
                            ] = 0.0;
+                     }
                      
+                     if ( isnan( phi_local_rates_sqrt[
+                                    nn + Nvoxel_neighbors*idx ] ))
+                     {
+                        if ( flags.debug != 0)
+                           std::cout << "Error, node "
+                              << mynode
+                              << ": phi_local_rates_sqrt["
+                              << nn + Nvoxel_neighbors*idx 
+                              << "] is a NaN." 
+                              << " phi_local[idx] : "
+                              << phi_local[idx]
+                              << std::endl;
+                           flags.fail = 1;
+                     }
+
                      phi_local_rates_sqrt_derivatives[
                                  nn + Nvoxel_neighbors*idx
                         ] = 
                         double_well_tilted_derivative(
                            phi_local[idx],
+                           upward_shift,
                            ww,
                            TT,
                            tilt_alpha
                            );
+                     if ( isnan( phi_local_rates_sqrt_derivatives[
+                                    nn + Nvoxel_neighbors*idx ] ))
+                     {
+                        if ( flags.debug != 0)
+                           std::cout << "Error, node "
+                              << mynode
+                              << ": phi_local_rates_sqrt_derivatives["
+                              << nn + Nvoxel_neighbors*idx 
+                              << "] is a NaN." 
+                              << " phi_local[idx] : "
+                              << phi_local[idx]
+                              << std::endl;
+                        flags.fail = 1;
+                     }
                      //if ( flags.debug != 0)
                      //{
                      //   std::cout << "phi_local_rates_sqrt[" 
@@ -807,6 +844,21 @@ int main( int argc, char* argv[])
                      //      << " setting it to 0." << std::endl;
                      //}
                      phi_local_flux[nn + Nvoxel_neighbors*idx] = 0;
+                  }
+
+                  if ( isnan( phi_local_flux[nn + Nvoxel_neighbors*idx]))
+                  {
+                     if ( flags.debug != 0)
+                     {
+                        std::cout << "Error, node " << mynode 
+                           << ": phi_local_flux["
+                           << nn + Nvoxel_neighbors*idx << "] is a NaN."
+                           << " phi_local["
+                           << nn + Nvoxel_neighbors*idx << "]: "
+                           << phi_local[nn + Nvoxel_neighbors*idx]
+                           << std::endl;
+                     }
+                     flags.fail = 1;
                   }
                   //if( phi_local_flux[nn + Nvoxel_neighbors*idx] 
                   //      > phi_local[idx])
@@ -1004,6 +1056,19 @@ int main( int argc, char* argv[])
       //////////////////////////////////////////////////////////////////
 
       MPI_Waitall(4, halo_flux_recv_requests, MPI_STATUSES_IGNORE);
+
+      if ( check_for_failure( flags, world_comm) )
+      {
+         if ( mynode == rootnode )
+         {
+            cout << "Error, failure while writing file: " 
+               << outputFileName << endl;
+         }
+         H5Fclose( outFile_id );
+         MPI_Comm_free( &neighbors_comm); 
+         MPI_Finalize();
+         return EXIT_FAILURE;
+      }
 
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values

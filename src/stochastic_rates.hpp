@@ -34,6 +34,7 @@ namespace SPF_NS
          //const std::vector<double>& local_field,
          const double& xx, // local_field[idx],
          //const double& rate_scale_factor,
+         const double& upward_shift,
          const double& ww,
          const double& TT,
          const double& alpha
@@ -45,6 +46,7 @@ namespace SPF_NS
          //const std::vector<double>& local_field,
          const double& xx, // local_field[idx],
          //const double& rate_scale_factor,
+         const double& upward_shift,
          const double& ww,
          const double& TT,
          const double& alpha

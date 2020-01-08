@@ -725,13 +725,13 @@ int main( int argc, char* argv[])
                            = 0;
                      }
                      if ( isnan( phi_local_rates_sqrt[
-                                    nn + Nvoxel_neighbors*idx ] ))
+                                    ii + Nvoxel_neighbors*idx ] ))
                      {
                         if ( flags.debug != 0)
                            std::cout << "Error, node "
                               << mynode
                               << ": phi_local_rates_sqrt["
-                              << nn + Nvoxel_neighbors*idx 
+                              << ii + Nvoxel_neighbors*idx 
                               << "] is a NaN." 
                               << " phi_local[idx] : "
                               << phi_local[idx]
@@ -745,13 +745,13 @@ int main( int argc, char* argv[])
                               phi_local,
                               idx); 
                      if ( isnan( phi_local_rates_sqrt_derivatives[
-                                    nn + Nvoxel_neighbors*idx ] ))
+                                    ii + Nvoxel_neighbors*idx ] ))
                      {
                         if ( flags.debug != 0)
                            std::cout << "Error, node "
                               << mynode
                               << ": phi_local_rates_sqrt_derivatives["
-                              << nn + Nvoxel_neighbors*idx 
+                              << ii + Nvoxel_neighbors*idx 
                               << "] is a NaN." 
                               << " phi_local[idx] : "
                               << phi_local[idx]

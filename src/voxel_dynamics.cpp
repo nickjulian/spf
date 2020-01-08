@@ -265,10 +265,10 @@ int SPF_NS::enforce_bounds_generic(
                //                  neigh_pairs[nn]   // mm 
                //                     + Nvoxel_neighbors * neigh_idxs[nn]];
                //}
-               if ( flags.debug != 0)
-               {
-                  std::cout << "renormalizing phi_local_flux " ;
-               }
+               //if ( flags.debug != 0)
+               //{
+               //   std::cout << "renormalizing phi_local_flux " ;
+               //}
                for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
                   phi_local_flux[ 
@@ -281,17 +281,17 @@ int SPF_NS::enforce_bounds_generic(
                         //   ] 
                            / inward_flux;
                            //] / total_flux_rate;
-                  if ( flags.debug != 0)
-                  {
-                     std::cout << ", phi_local_flux["
-                                 << neigh_pairs[nn]
-                                    + Nvoxel_neighbors * neigh_idxs[nn]
-                                    << "] "
-                        << phi_local_flux[
-                                 neigh_pairs[nn]
-                                    + Nvoxel_neighbors * neigh_idxs[nn]]
-                        << std::endl;
-                  }
+                  //if ( flags.debug != 0)
+                  //{
+                  //   std::cout << ", phi_local_flux["
+                  //               << neigh_pairs[nn]
+                  //                  + Nvoxel_neighbors * neigh_idxs[nn]
+                  //                  << "] "
+                  //      << phi_local_flux[
+                  //               neigh_pairs[nn]
+                  //                  + Nvoxel_neighbors * neigh_idxs[nn]]
+                  //      << std::endl;
+                  //}
                }
             }
 
@@ -313,9 +313,12 @@ int SPF_NS::enforce_bounds_generic(
                {
                   // TODO: the following is just a guess of error limit
                   if (abs(phi_local[idx] - phi_lower_limit - outward_flux)
-                       > (eps.dblsqrt* (phi_local[idx] - phi_lower_limit))
+                       > 2*eps.dbl
+                       //> (eps.dblsqrt* (phi_local[idx] - phi_lower_limit))
                      )
+                  {
                      std::cout << "Warning: reduced outward flux still greater than voxel contents. (outward_flux, phi_local[" << idx << "]): (" << outward_flux << ", " << phi_local[idx] << ")" << std::endl;
+                  }
                   // else phi_local[idx] =0 if <0 in parent function
                }
 
@@ -325,8 +328,10 @@ int SPF_NS::enforce_bounds_generic(
                   if ( (inward_flux + phi_local[idx] - phi_upper_limit)
                        > (eps.dblsqrt* (phi_local[idx] - phi_upper_limit))
                      )
+                  {
                      std::cout << "Warning: reduced inward flux + previous population still greater than voxel upper limit. (inward_flux, phi_local[" << idx << "]): (" << inward_flux << ", " << phi_local[idx] << ")"
                         << std::endl;
+                  }
                }
             } // end debug
          }
@@ -391,6 +396,9 @@ int SPF_NS::enforce_bounds_int(
         << " compatible with 2-D" << std::endl;
       return EXIT_FAILURE;
    }
+
+   bool dest_flag; dest_flag = false;
+   double current_flux; current_flux = 0;
 
    // iterate over local voxels
    
@@ -476,10 +484,12 @@ int SPF_NS::enforce_bounds_int(
                while ( rounding_error < 0 )
                {  // outward_flux is too large
                   // find a neighbor to reduce flux of
-                  do {
-                     dest_idx = ud(rr.generator);// random initial neigh
-                  } while ( phi_local_flux[ 
-                              dest_idx + Nvoxel_neighbors*idx] <= 0);
+                  dest_flag = false;
+                  dest_idx = ud(rr.generator);// random initial neigh
+                  if ( phi_local_flux[dest_idx + Nvoxel_neighbors*idx] >0)
+                  {
+                     dest_flag = true;
+                  }
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the lowest outward flux rate
                      if ((phi_local_rates[
@@ -493,21 +503,32 @@ int SPF_NS::enforce_bounds_int(
                         )
                      {
                         dest_idx = nn;
+                        dest_flag = true;
                      }
                   }
 
-                  phi_local_flux[dest_idx + Nvoxel_neighbors*idx] -= 1;
-                  rounding_error += 1;
+                  if ( dest_flag )
+                  {
+                     phi_local_flux[dest_idx + Nvoxel_neighbors*idx] -= 1;
+                     rounding_error += 1;
+                  }
+                  else
+                  {
+                     break;
+                  }
                } // while ( rounding_error < 0 )
                while ( rounding_error > 0 )
                {  // outward_flux too small
                   // find the neighbor flux having highest rate 
                   //   and increment its flux 
-                  do {
-                     dest_idx = ud(rr.generator);// initially random neigh
-                  } while ( phi_local[ 
-                                 Nvoxel_neighbors*neigh_idxs[dest_idx]
-                              ] >= phi_upper_limit);
+                  dest_flag = false;
+                  dest_idx = ud(rr.generator);// initially random neigh
+                  if ( phi_local[
+                           Nvoxel_neighbors * neigh_idxs[dest_idx]]
+                           < phi_upper_limit)
+                  {
+                     dest_flag = true;
+                  }
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the greatest outward flux rate
                      if ((phi_local_rates[dest_idx + Nvoxel_neighbors*idx]
@@ -522,12 +543,21 @@ int SPF_NS::enforce_bounds_int(
                         )
                      {
                            dest_idx = nn;
+                           dest_flag = true;
                      }
                   }
-                  phi_local_flux[ 
-                     dest_idx + Nvoxel_neighbors*idx
-                                 ] += 1;
-                  rounding_error -= 1;
+                  if ( dest_flag )
+                  { // only fix the rounding error if a flux can be
+                    //  modified without overfilling a neighbor
+                     phi_local_flux[ 
+                        dest_idx + Nvoxel_neighbors*idx
+                                    ] += 1;
+                     rounding_error -= 1;
+                  }
+                  else
+                  {
+                     break;
+                  }
                } // while ( rounding_error > 0)
                //if( rounding_error == 1)
                //{
@@ -647,10 +677,10 @@ int SPF_NS::enforce_bounds_int(
                //                  neigh_pairs[nn]   // mm 
                //                    + Nvoxel_neighbors * neigh_idxs[nn]];
                //}
-               if ( flags.debug != 0)
-               {
-                  std::cout << "renormalizing phi_local_flux " ;
-               }
+               //if ( flags.debug != 0)
+               //{
+               //   std::cout << "renormalizing phi_local_flux " ;
+               //}
                for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                {
                   phi_local_flux[
@@ -674,18 +704,18 @@ int SPF_NS::enforce_bounds_int(
                      = round(phi_local_flux[ 
                                  neigh_pairs[nn]   // mm 
                                     + Nvoxel_neighbors * neigh_idxs[nn]]);
-                  if ( flags.debug != 0)
-                  {
-                     std::cout << ", phi_local_flux["
-                                 << neigh_pairs[nn]
-                                    + Nvoxel_neighbors * neigh_idxs[nn]
-                                    << "] "
-                        << phi_local_flux[
-                                 neigh_pairs[nn]
-                                    + Nvoxel_neighbors * neigh_idxs[nn]];
-                  }
+                  //if ( flags.debug != 0)
+                  //{
+                  //   std::cout << ", phi_local_flux["
+                  //               << neigh_pairs[nn]
+                  //                  + Nvoxel_neighbors * neigh_idxs[nn]
+                  //                  << "] "
+                  //      << phi_local_flux[
+                  //               neigh_pairs[nn]
+                  //                  + Nvoxel_neighbors * neigh_idxs[nn]];
+                  //}
                }
-               if ( flags.debug != 0) std::cout << std::endl;
+               //if ( flags.debug != 0) std::cout << std::endl;
                // check rounding error
                inward_flux = 0;
                for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
@@ -700,7 +730,23 @@ int SPF_NS::enforce_bounds_int(
                while ( rounding_error > 0 )
                {  // inward_flux is too small
                   // find a neighbor to pull walkers from
+                  dest_flag = false;
                   dest_idx = ud(rr.generator); // initially random neigh
+                  // ensure initial choice has walkers to spare
+                  current_flux = 0;
+                  for ( size_t mm=0; mm < Nvoxel_neighbors; ++mm)
+                  {
+                     current_flux += 
+                        phi_local_flux[
+                           mm + Nvoxel_neighbors* neigh_idxs[dest_idx]];
+                  }
+                  if ( current_flux <
+                                 phi_local[ 
+                                    Nvoxel_neighbors*neigh_idxs[dest_idx]]
+                              )
+                  {
+                     dest_flag = true;
+                  }
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the greatest outward flux rate
                      if (phi_local_rates[
@@ -713,36 +759,52 @@ int SPF_NS::enforce_bounds_int(
                         )
                      {
                         // ensure voxel nn has walkers to spare
-                        int tmp_flux ; tmp_flux =0;
+                        current_flux =0;
                         for ( size_t mm=0; mm < Nvoxel_neighbors; ++mm)
                         {
-                           tmp_flux += 
+                           current_flux += 
                               phi_local_flux[
                                  mm + Nvoxel_neighbors* neigh_idxs[nn]];
                         }
-                        if ( tmp_flux
+                        if ( current_flux
                                    <
                                  phi_local[ 
                                     Nvoxel_neighbors*neigh_idxs[nn]]
                               )
                         {
+                           dest_flag = true;
                            dest_idx = nn;
                         }
                      }
                   }
                   // add the lost walker to the chosen flux
-                  phi_local_flux[
-                           neigh_pairs[dest_idx] 
-                              + Nvoxel_neighbors*neigh_idxs[dest_idx]
-                        ] += 1;
-                  rounding_error -= 1;
+                  if ( dest_flag )
+                  {
+                     phi_local_flux[
+                              neigh_pairs[dest_idx] 
+                                 + Nvoxel_neighbors*neigh_idxs[dest_idx]
+                           ] += 1;
+                     rounding_error -= 1;
+                  }
+                  else
+                  {
+                     break;
+                  }
                }
                while ( rounding_error < 0 )
                {  // inward_flux too large
                   // find the neighbor flux having smallest rate 
                   //  and non-zero flux and decrement its flux 
                   //
+                  dest_flag = false;
                   dest_idx = ud(rr.generator); // initially random neigh
+                  if ( phi_local_flux[
+                              neigh_pairs[dest_idx] 
+                                 + Nvoxel_neighbors* neigh_idxs[dest_idx]]
+                                    > 0)
+                  {
+                     dest_flag = true;
+                  }
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the lowest outward flux rate
                      if ((phi_local_rates[
@@ -760,36 +822,42 @@ int SPF_NS::enforce_bounds_int(
                                     > 0)
                         )
                      {
+                        dest_flag = true;
                         dest_idx = nn;
                      }
                   }
                   // add the lost walker to the chosen flux
-                  phi_local_flux[
-                           neigh_pairs[dest_idx] 
-                              + Nvoxel_neighbors*neigh_idxs[dest_idx]
-                        ] -= 1;
-                  rounding_error += 1;
-               }
-               if ( rounding_error != 0)
-               {
-                  std::cout 
-                     << "Somehow rounding_error was neither 0 or 1: "
-                     << rounding_error
-                     << ", inward_flux " << inward_flux
-                     << ", phi_local[" << idx << "] " << phi_local[idx]
-                     << ", phi_upper_limit " << phi_upper_limit;
-                     //<< ", total_flux_rate " << total_flux_rate;
-                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  if ( dest_flag )
                   {
-                     std::cout << ", phi_local_flux[" 
-                     << neigh_pairs[nn]+ Nvoxel_neighbors * neigh_idxs[nn]
-                     << "] "
-                     << phi_local_flux[ 
-                                    neigh_pairs[nn] 
-                                      + Nvoxel_neighbors * neigh_idxs[nn]]
-                        << std::endl;
+                     phi_local_flux[
+                              neigh_pairs[dest_idx] 
+                                 + Nvoxel_neighbors*neigh_idxs[dest_idx]
+                           ] -= 1;
+                     rounding_error += 1;
                   }
                }
+               //if ( rounding_error != 0)
+               //{
+               //   std::cout 
+               //      << "Somehow rounding_error was neither 0 or 1: "
+               //      << rounding_error
+               //      << ", inward_flux " << inward_flux
+               //      << ", phi_local[" << idx << "] " << phi_local[idx]
+               //      << ", phi_upper_limit " << phi_upper_limit
+               //      //<< ", total_flux_rate " << total_flux_rate;
+               //      << ", phi_loca[" << dest_idx << "] " 
+               //      << phi_local[dest_idx];
+               //   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+               //   {
+               //      std::cout << ", phi_local_flux[" 
+               //      << neigh_pairs[nn]+ Nvoxel_neighbors * neigh_idxs[nn]
+               //      << "] "
+               //      << phi_local_flux[ 
+               //                     neigh_pairs[nn] 
+               //                       + Nvoxel_neighbors * neigh_idxs[nn]]
+               //         << std::endl;
+               //   }
+               //}
             }
 
             if (flags.debug != 0)

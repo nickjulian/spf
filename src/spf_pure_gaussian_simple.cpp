@@ -9,7 +9,7 @@
 #include <cstdlib>   // EXIT_SUCCESS, EXIT_FAILURE
 #include <vector>
 #include <string>
-#include <math.h> // floor
+#include <math.h> // floor, isnan
 #include <time.h> // time_t, time, ctime
 
 #include <mpi.h>
@@ -724,17 +724,49 @@ int main( int argc, char* argv[])
                         phi_local_rates_sqrt[ii + Nvoxel_neighbors * idx]
                            = 0;
                      }
+                     if ( isnan( phi_local_rates_sqrt[
+                                    nn + Nvoxel_neighbors*idx ] ))
+                     {
+                        if ( flags.debug != 0)
+                           std::cout << "Error, node "
+                              << mynode
+                              << ": phi_local_rates_sqrt["
+                              << nn + Nvoxel_neighbors*idx 
+                              << "] is a NaN." 
+                              << " phi_local[idx] : "
+                              << phi_local[idx]
+                              << std::endl;
+                           flags.fail = 1;
+                     }
 
                      simple_identity_rate_derivative(
                               phi_local_rates_sqrt_derivatives[
                                        ii + Nvoxel_neighbors * idx],
                               phi_local,
                               idx); 
+                     if ( isnan( phi_local_rates_sqrt_derivatives[
+                                    nn + Nvoxel_neighbors*idx ] ))
+                     {
+                        if ( flags.debug != 0)
+                           std::cout << "Error, node "
+                              << mynode
+                              << ": phi_local_rates_sqrt_derivatives["
+                              << nn + Nvoxel_neighbors*idx 
+                              << "] is a NaN." 
+                              << " phi_local[idx] : "
+                              << phi_local[idx]
+                              << std::endl;
+                        flags.fail = 1;
+                     }
                   }
                   else
                   {
                      phi_local_rates_sqrt[ii + Nvoxel_neighbors * idx]
                         = phi_local_rates_sqrt[0+ Nvoxel_neighbors* idx];
+                     phi_local_rates_sqrt_derivatives[
+                           ii + Nvoxel_neighbors * idx]
+                        = phi_local_rates_sqrt_derivatives[
+                           0+ Nvoxel_neighbors* idx];
                   }
                }
 
@@ -762,6 +794,21 @@ int main( int argc, char* argv[])
                      //   << " setting it to 0." << std::endl;
                      //// end debug
                      phi_local_flux[nn + Nvoxel_neighbors*idx] = 0;
+                  }
+
+                  if ( isnan( phi_local_flux[nn + Nvoxel_neighbors*idx]))
+                  {
+                     if ( flags.debug != 0)
+                     {
+                        std::cout << "Error, node " << mynode 
+                           << ": phi_local_flux["
+                           << nn + Nvoxel_neighbors*idx << "] is a NaN."
+                           << " phi_local["
+                           << nn + Nvoxel_neighbors*idx << "]: "
+                           << phi_local[nn + Nvoxel_neighbors*idx]
+                           << std::endl;
+                     }
+                     flags.fail = 1;
                   }
                   //if( phi_local_flux[nn + Nvoxel_neighbors*idx] 
                   //      > phi_local[idx])
@@ -958,6 +1005,19 @@ int main( int argc, char* argv[])
       //////////////////////////////////////////////////////////////////
 
       MPI_Waitall(4, halo_flux_recv_requests, MPI_STATUSES_IGNORE);
+
+      if ( check_for_failure( flags, world_comm) )
+      {
+         if ( mynode == rootnode )
+         {
+            cout << "Error, failure while writing file: " 
+               << outputFileName << endl;
+         }
+         H5Fclose( outFile_id );
+         MPI_Comm_free( &neighbors_comm); 
+         MPI_Finalize();
+         return EXIT_FAILURE;
+      }
 
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values
@@ -1190,13 +1250,18 @@ int main( int argc, char* argv[])
 
                if ( phi_local[idx] > phi_upper_limit )
                {
-                  if ((flags.debug != 0) && (mynode == rootnode))
+                  if (((phi_local[idx] - phi_upper_limit )
+                           > 
+                           2*eps.dbl
+                      )
+                           // ^ guess of error to be acceptably lost
+                     && (flags.debug != 0) && (mynode == rootnode))
                   {
                      std::cout << "Warning: step " 
                         << time_step 
                         << " flux into voxel caused upper bound breach"
-                        << " phi_local[" << idx << "]: "
-                        << phi_local[idx] 
+                        << " phi_local[" << idx << "]-1: "
+                        << phi_local[idx] -1.0
                         // << " setting phi_localto its upper limit"
                         << std::endl;
                   }

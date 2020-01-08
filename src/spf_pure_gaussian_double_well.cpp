@@ -1301,13 +1301,18 @@ int main( int argc, char* argv[])
 
                if ( phi_local[idx] > phi_upper_limit )
                {
-                  if ((flags.debug != 0) && (mynode == rootnode))
+                  if (((phi_local[idx] - phi_upper_limit )
+                           > 
+                           2*eps.dbl
+                      )
+                           // ^ guess of error to be acceptably lost
+                     && (flags.debug != 0) && (mynode == rootnode))
                   {
                      std::cout << "Warning: step " 
                         << time_step 
                         << " flux into voxel caused upper bound breach"
-                        << " phi_local[" << idx << "]: "
-                        << phi_local[idx] 
+                        << " phi_local[" << idx << "]-1: "
+                        << phi_local[idx] -1.0
                         // << " setting phi_localto its upper limit"
                         << std::endl;
                   }

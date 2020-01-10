@@ -92,7 +92,7 @@ int main( int argc, char* argv[])
 
    // TODO: erase this and read Nt from the cmdline
    //double diffusivityT; diffusivityT = 3.0E-4;
-   int Nv; Nv = 1; // number of walkers possible in a voxel
+   int Nv; Nv = 1;
 
    double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
    double ww; ww = -0.1; // order energy
@@ -810,10 +810,14 @@ int main( int argc, char* argv[])
                conserved_gaussian_flux_separate_distributions( 
                      phi_local_flux,
                      rr,
+                     phi_local,
                      phi_local_rates_sqrt,
                      phi_local_rates_sqrt_derivatives,
                      dt,
                      Nvoxel_neighbors,
+                     neigh_idxs,
+                     phi_upper_limit,
+                     phi_lower_limit,
                      idx
                      );
 
@@ -957,31 +961,75 @@ int main( int argc, char* argv[])
                //      ii, jj, kk, Nx_total, Ny, Nz);
 
 
-               // Copy outward flux to be sent to neighboring nodes.
-               // Also copy flux rates, to order inward flux to 
-               //  neighboring node voxels.
+               //// Copy outward flux to be sent to neighboring nodes.
+               //// Also copy flux rates, to order inward flux to 
+               ////  neighboring node voxels.
 
-               if (ii == 1 )  // lower x-axis boundary of non-ghosts
-               {
-                  phi_flux_downward[  kk + Nz*jj] 
-                     = phi_local_flux[ 0+ Nvoxel_neighbors * idx ]; 
-                  // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+               //if (ii == 1 )  // lower x-axis boundary of non-ghosts
+               //{
+               //   phi_flux_downward[  kk + Nz*jj] 
+               //      = phi_local_flux[ 0+ Nvoxel_neighbors * idx ]; 
+               //   // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
 
-                  phi_flux_downward_rates[kk + Nz*jj] 
-                     = phi_local_rates_sqrt[0 + Nvoxel_neighbors * idx];
-               }
-               if (ii == Nx_local) // upper x-axis boundary of non-ghosts
-               {
-                  phi_flux_upward[ kk + Nz*jj] 
-                     = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
+               //   phi_flux_downward_rates[kk + Nz*jj] 
+               //      = phi_local_rates_sqrt[0 + Nvoxel_neighbors * idx];
+               //}
+               //if (ii == Nx_local) // upper x-axis boundary of non-ghosts
+               //{
+               //   phi_flux_upward[ kk + Nz*jj] 
+               //      = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
 
-                  phi_flux_upward_rates[kk + Nz*jj] 
-                     = phi_local_rates_sqrt[1 + Nvoxel_neighbors * idx];
-               }
+               //   phi_flux_upward_rates[kk + Nz*jj] 
+               //      = phi_local_rates_sqrt[1 + Nvoxel_neighbors * idx];
+               //}
             }
 
       /* end loop over voxels *****************************************/
       /****************************************************************/
+      
+      enforce_bounds_dbl_outward(
+            // updates phi_local_flux with acceptable flux values
+            phi_local_flux,   // integers
+            phi_local,        // integers
+            phi_local_rates_sqrt,  // not necessarily integers
+            rr,
+            // neigh_order,
+            Nvoxel_neighbors,
+            phi_lower_limit,
+            phi_upper_limit,
+            Nx_local, Ny, Nz,
+            eps,
+            flags
+            );
+
+      //for (size_t ii=1; ii < Nx_local +1; ++ii) // loop over non-ghosts
+      size_t iii;
+      for ( size_t jj=0; jj < Ny; ++jj)
+         for ( size_t kk=0; kk < Nz; ++kk)
+         {
+            iii = 1; // lower x-axis boundary of non-ghosts
+            idx = kk + Nz*(jj + Ny*iii);
+
+            // Copy outward flux to be sent to neighboring nodes.
+            // Also copy flux rates, to order inward flux to 
+            //  neighboring node voxels.
+
+            phi_flux_downward[  kk + Nz*jj] 
+               = phi_local_flux[ 0+ Nvoxel_neighbors * idx ]; 
+            // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+
+            phi_flux_downward_rates[kk + Nz*jj] 
+               = phi_local_rates_sqrt[0 + Nvoxel_neighbors * idx];
+
+            iii = Nx_local; // upper x-axis boundary of non-ghosts
+            idx = kk + Nz*(jj + Ny*iii);
+
+            phi_flux_upward[ kk + Nz*jj] 
+               = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
+
+            phi_flux_upward_rates[kk + Nz*jj] 
+               = phi_local_rates_sqrt[1 + Nvoxel_neighbors * idx];
+         }
       
       //////////////////////////////////////////////////////////////////
       // copy outward flux to be sent to neighboring nodes 
@@ -1023,7 +1071,7 @@ int main( int argc, char* argv[])
       //////////////////////////////////////////////////////////////////
 
       //////////////////////////////////////////////////////////////////
-      // send outward flux to neighboring nodes
+      // send locally acceptable outward flux to neighboring nodes
       flux_exchange_isend(
          phi_flux_upward, // Ny*Nz
          phi_flux_upward_rates, // Ny*Nz
@@ -1057,18 +1105,18 @@ int main( int argc, char* argv[])
 
       MPI_Waitall(4, halo_flux_recv_requests, MPI_STATUSES_IGNORE);
 
-      if ( check_for_failure( flags, world_comm) )
-      {
-         if ( mynode == rootnode )
-         {
-            cout << "Error, failure while writing file: " 
-               << outputFileName << endl;
-         }
-         H5Fclose( outFile_id );
-         MPI_Comm_free( &neighbors_comm); 
-         MPI_Finalize();
-         return EXIT_FAILURE;
-      }
+      //if ( check_for_failure( flags, world_comm) )
+      //{
+      //   if ( mynode == rootnode )
+      //   {
+      //      cout << "Error, failure while writing file: " 
+      //         << outputFileName << endl;
+      //   }
+      //   H5Fclose( outFile_id );
+      //   MPI_Comm_free( &neighbors_comm); 
+      //   MPI_Finalize();
+      //   return EXIT_FAILURE;
+      //}
 
       //////////////////////////////////////////////////////////////////
       // combine received flux with local values
@@ -1112,7 +1160,7 @@ int main( int argc, char* argv[])
                = phi_flux_from_below_rates[kk + Nz*jj];
          }
 
-      // TODO: enforce_field_bounds( field, flux )
+      // enforce_field_bounds( field, flux )
       //        using phi_local_flux[] for flux magnitudes
       //        and phi_local_rates_sqrt[] for balancing those magnitudes
       //        saving acceptable fluxes in phi_local_flux
@@ -1131,10 +1179,16 @@ int main( int argc, char* argv[])
       //      flags
       //      );
 
-      enforce_bounds_generic(
+      // enforce_bounds_generic renormalizes excessive loss to available
+      //  walkers, and excessive gain flux to their rates.
+      //  Neither method guarantees that rounding the results will 
+      //  yield the same total number of walkers lost or gained.
+
+      // check that inward fluxes don't exceed local bounds
+      enforce_bounds_dbl_inward(
             // updates phi_local_flux with acceptable flux values
-            phi_local_flux,
-            phi_local,
+            phi_local_flux,   // doubles
+            phi_local,        // doubles
             phi_local_rates_sqrt,   // maybe use \sigma^2 ?
             rr,
             // neigh_order,
@@ -1146,7 +1200,7 @@ int main( int argc, char* argv[])
             flags
             );
 
-      // Update phi_flux_from_below / above with accepted rates 
+      // Update phi_flux_from_below / above with accepted inward fluxes 
       //        from ghosts residing in phi_local_flux
       for (size_t jj=0; jj < Ny; ++jj)
          for (size_t kk=0; kk < Nz; ++kk)
@@ -1160,18 +1214,6 @@ int main( int argc, char* argv[])
                = phi_local_flux[ idx ];
          }
 
-      // send accepted flux values back to sources
-      flux_accepted_isend(
-            phi_flux_from_above, // Ny*Nz
-            phi_flux_from_below, // Ny*Nz
-            Ny,
-            Nz,
-            neighbor_x_higher,
-            neighbor_x_lower, 
-            halo_accepted_flux_send_requests, // two Isend per halo
-            neighbors_comm
-            );
-
       MPI_Waitall(4, halo_flux_send_requests, MPI_STATUSES_IGNORE);
 
       flux_accepted_irecv(
@@ -1182,6 +1224,18 @@ int main( int argc, char* argv[])
             neighbor_x_higher,
             neighbor_x_lower,
             halo_accepted_flux_recv_requests,
+            neighbors_comm
+            );
+
+      // send accepted flux values back to sources
+      flux_accepted_isend(
+            phi_flux_from_above, // Ny*Nz
+            phi_flux_from_below, // Ny*Nz
+            Ny,
+            Nz,
+            neighbor_x_higher,
+            neighbor_x_lower, 
+            halo_accepted_flux_send_requests, // two Isend per halo
             neighbors_comm
             );
 
@@ -1197,17 +1251,17 @@ int main( int argc, char* argv[])
             //  the neighboring node requests smaller values than 
             //  determined by the local node's boundary enforcement.
             idx = 0 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(1)));
-            if ( phi_flux_downward[kk + Nz*jj] < phi_local_flux[ idx ] )
-            {
-               phi_local_flux[ idx ] = phi_flux_downward[kk + Nz*jj];
-            }
+            //if ( phi_flux_downward[kk + Nz*jj] < phi_local_flux[ idx ] )
+            //{
+            phi_local_flux[ idx ] = phi_flux_downward[kk + Nz*jj];
+            //}
 
             idx = 1 + Nvoxel_neighbors* (kk + Nz*(jj + Ny*(Nx_local)));
-            if ( phi_flux_upward[kk + Nz*jj] < phi_local_flux[ idx ] )
-            {
-               phi_local_flux[ idx ]
+            //if ( phi_flux_upward[kk + Nz*jj] < phi_local_flux[ idx ] )
+            //{
+            phi_local_flux[ idx ]
                   = phi_flux_upward[kk + Nz*jj];
-            }
+            //}
             // After this loop, both local voxels and neighbor's ghosts
             //  should contain the smaller of the fluxes determined by
             //  both nodes, to prevent both over filling and 

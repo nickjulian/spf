@@ -42,6 +42,9 @@ spf-gaussian-simple: $(OBJS)
 spf-gaussian-pairwise-simple: $(OBJS)
 	$(CXX) $(ROOT)/src/spf_pure_gaussian_pairwise_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_pairwise_simple.x
 
+spf-poisson-pairwise-simple: $(OBJS)
+	$(CXX) $(ROOT)/src/spf_pure_poisson_pairwise_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_pairwise_simple.x
+
 spf-poisson-double-well: $(OBJS)
 	$(CXX) $(ROOT)/src/spf_pure_poisson_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_double_well.x
 

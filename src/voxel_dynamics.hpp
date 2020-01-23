@@ -45,6 +45,36 @@ namespace SPF_NS
          int_flags& flags
          );
 
+   int enforce_bounds_pairwise_dbl_inward(
+         std::vector<double>& phi_local_flux,   // integers
+         const std::vector<double>& phi_local,  // integers
+         const std::vector<double>& phi_local_rates, // doubles
+         SPF_NS::random& rr,
+         const size_t& Nvoxel_neighbors,
+         const double& phi_lower_limit,
+         const double& phi_upper_limit,
+         const int& Nx_local,
+         const int& Ny,
+         const int& Nz,
+         const epsilon& eps,
+         int_flags& flags
+         );
+
+   int enforce_bounds_pairwise_dbl_outward(
+         std::vector<double>& phi_local_flux,   // integers
+         const std::vector<double>& phi_local,  // integers
+         const std::vector<double>& phi_local_rates, // doubles
+         SPF_NS::random& rr,
+         const size_t& Nvoxel_neighbors,
+         const double& phi_lower_limit,
+         const double& phi_upper_limit,
+         const int& Nx_local,
+         const int& Ny,
+         const int& Nz,
+         const epsilon& eps,
+         int_flags& flags
+         );
+
    int enforce_bounds_dbl_outward(
          std::vector<double>& phi_local_flux,   // integers
          const std::vector<double>& phi_local,  // integers
@@ -217,6 +247,19 @@ namespace SPF_NS
       const size_t& idx);
 
    int conserved_gaussian_flux_separate_distributions( 
+      std::vector<double>& pairwise_flux, // 6* local_field size
+      SPF_NS::random& rr,
+      const std::vector<double>& phi_local,  // integers
+      const std::vector<double>& jump_rates_sqrt,  // 6 elements
+      const std::vector<double>& jump_rate_sqrt_derivatives,  // 6 elements
+      const double& dt,
+      const size_t& Nvoxel_neighbors,
+      const std::vector<size_t>& neigh_idxs,
+      const double& phi_upper_limit,
+      const double& phi_lower_limit,
+      const size_t& idx);
+
+   int conserved_gaussian_flux_pairwise_distributions( 
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers

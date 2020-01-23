@@ -21,11 +21,24 @@ namespace SPF_NS
          //const double& rate_scale_factor,
          const size_t& idx
          );
+   int simple_identity_rate_gradient(
+         double& local_rate,  // output
+         const std::vector<double>& local_field,
+         const size_t& neigh_idx,
+         const size_t& idx
+         );
 
    int simple_identity_rate_derivative( // (1/6)*rate_scale_factor
          double& local_rate_derivative,
          const std::vector<double>& local_field,
          //const double& rate_scale_factor,
+         const size_t& idx
+         );
+
+   int simple_identity_rate_gradient_derivative( 
+         double& local_rate_derivative,
+         const std::vector<double>& local_field,
+         const size_t& neigh_idx,
          const size_t& idx
          );
 

@@ -546,6 +546,7 @@ int main( int argc, char* argv[])
    for (time_step = 0; time_step <= Nt; ++time_step)
    {
 
+      double flux_total; flux_total = 0.0;// debug
       //////////////////////////////////////////////////////////////////
       // append fields to a file
       if ( time_step % write_period == 0 )
@@ -716,12 +717,31 @@ int main( int argc, char* argv[])
                            TT,
                            tilt_alpha
                            );// - 0.5*0.00008617*TT*ww;
+                  //// debug
+                  //std::cout << "node " << mynode 
+                  //   << " phi_local_rates[" 
+                  //   <<  nn + Nvoxel_neighbors*idx 
+                  //   << "] "
+                  //   << phi_local_rates[ 
+                  //   nn + Nvoxel_neighbors*idx ]
+                  //   << ", phi_local[" << idx << "]"
+                  //   << phi_local[idx]
+                  //   << "phi_local[" << idx << "]/" << Nv << " "
+                  //   << phi_local[idx ]/Nv
+                  //   //<< ", upward_shift " << upward_shift 
+                  //   //<< ", ww " << ww
+                  //   //<< ", TT " << TT
+                  //   //<< ", tilt_alpha " << tilt_alpha
+                  //   << std::endl; 
+                  //// end debug
 
                      // convert to # walkers
                      phi_local_rates[ nn + Nvoxel_neighbors*idx ] *= Nv;
                   }
                   else
+                  {
                      phi_local_rates[nn + Nvoxel_neighbors*idx] = 0;
+                  }
                }
 
                // evaluate stochastic fluxes to neighbor cells
@@ -737,6 +757,24 @@ int main( int argc, char* argv[])
                      phi_lower_limit,
                      idx
                      );
+               //for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+               //{
+               //   if ( flags.debug != 0)
+               //   {
+               //      //std::cout 
+               //      //   << time_step << " phi_local_flux["
+               //      //   << nn + Nvoxel_neighbors*idx << "]: "
+               //      //   << phi_local_flux[ nn + Nvoxel_neighbors*idx]
+               //      //   << ", phi_local_rates[" 
+               //      //   << nn +Nvoxel_neighbors*idx
+               //      //   << "] : " 
+               //      //   << phi_local_rates[ nn +Nvoxel_neighbors*idx] 
+               //      //   << std::endl;
+               //      flux_total 
+               //         += phi_local_flux[ nn + Nvoxel_neighbors*idx]/Nv;
+               //   }
+
+               //}
 
                //conserved_jump_flux_singl_distribution( 
                //      phi_local_change,
@@ -835,6 +873,10 @@ int main( int argc, char* argv[])
                //}
             }
 
+      //// debug
+      //std::cout << time_step << "flux_total : " << flux_total 
+      //   << std::endl;
+      //// end debug
       /* end loop over voxels *****************************************/
       /****************************************************************/
       
@@ -1275,17 +1317,20 @@ int main( int argc, char* argv[])
                      MPI_STATUSES_IGNORE);
       //// end debug
 
-      if ( check_for_failure( flags, world_comm) )
+      if ( flags.debug != 0)
       {
-         H5Fclose( outFile_id );
-         MPI_Comm_free( &neighbors_comm); 
-         MPI_Finalize();
-         if ( mynode == rootnode )
+         if ( check_for_failure( flags, world_comm) )
          {
-            std::cout << "Error : failed to enforce voxel value limits"
-               << std::endl;
+            H5Fclose( outFile_id );
+            MPI_Comm_free( &neighbors_comm); 
+            MPI_Finalize();
+            if ( mynode == rootnode )
+            {
+               std::cout << "Error : failed to enforce voxel value limits"
+                  << std::endl;
+            }
+            return EXIT_FAILURE;
          }
-         return EXIT_FAILURE;
       }
    }
    /*-----------------------------------------------------------------*/

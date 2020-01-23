@@ -22,7 +22,7 @@ int SPF_NS::simple_identity_rate(  // rate_scale_factor * local_field[idx]
 {
    if (local_field[idx] <= 0.0 ) local_rate = 0;
    local_rate = ONESIXTH //* rate_scale_factor 
-                  * sqrt(local_field[idx]);
+                  * (local_field[idx]);
    return EXIT_SUCCESS;
 }
 
@@ -32,12 +32,66 @@ int SPF_NS::simple_identity_rate_derivative(
       //const double& rate_scale_factor,
       const size_t& idx
       )
-{
+{  // has the sqrt() incorporated because it's only used to drive Gaussian 
    if (local_field[idx] <= 0.0 ) 
          local_rate_derivative = 100000000000000000000.0; 
    //if (xx >= 1.0 ) return ONESIXTH * rate_scale_factor * 0.5;
    local_rate_derivative = ONESIXTH //* rate_scale_factor 
                               * 0.5/sqrt(local_field[idx]);
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::simple_identity_rate_gradient(  // rate_scale_factor * local_field[idx]
+      double& local_rate,  // output
+      const std::vector<double>& local_field,
+      const size_t& neigh_idx,
+      const size_t& idx
+      )
+{
+   //if ((local_field[idx] < 0.0 ) || (local_field[neigh_idx] < 0.0))
+   //{
+   //   local_rate = 0;
+   //}
+   //else
+   //{
+   local_rate = ONESIXTH // TODO: divide by voxel separation
+                  * (
+                        local_field[idx]
+                        - local_field[neigh_idx]
+                        );
+   //}
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::simple_identity_rate_gradient_derivative( 
+      double& local_rate_derivative,
+      const std::vector<double>& local_field,
+      const size_t& neigh_idx,
+      const size_t& idx
+      )
+{
+   if( local_field[idx] > local_field[neigh_idx])
+   {
+      local_rate_derivative = ONESIXTH //* rate_scale_factor 
+                                 * 0.5/sqrt(
+                                       local_field[idx]
+                                          - local_field[neigh_idx]
+                                       );
+   }
+   else
+   if( local_field[idx] < local_field[neigh_idx])
+   {  // TODO: ensure this is correct
+      local_rate_derivative = ONESIXTH //* rate_scale_factor 
+                                 * -0.5/sqrt(
+                                       local_field[neigh_idx]
+                                       - local_field[idx]
+                                       );
+   }
+   else  //  gradient == 0
+   {
+      local_rate_derivative = 100000000000000000000.0; 
+   }
+      
    return EXIT_SUCCESS;
 }
 

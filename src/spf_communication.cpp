@@ -118,8 +118,8 @@ int SPF_NS::flux_accepted_isend(
 }
 
 int SPF_NS::flux_accepted_irecv(
-      std::vector<double>& flux_downward, // Ny*Nz
-      std::vector<double>& flux_upward, // Ny*Nz
+      std::vector<double>& flux_downward, // Ny*Nz, from neighbor_x_lower
+      std::vector<double>& flux_upward, // Ny*Nz, from neighbor_x_higher
       const int& Ny,
       const int& Nz,
       const int& neighbor_x_higher,

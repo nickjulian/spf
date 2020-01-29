@@ -740,7 +740,7 @@ int main( int argc, char* argv[])
                }
 
                // evaluate stochastic fluxes to neighbor cells
-               conserved_jump_flux_pairwise_distributions(
+               conserved_jump_flux_pairwise_drift_distributions(
                      phi_local_flux,
                      rr,
                      phi_local,
@@ -1504,7 +1504,7 @@ int main( int argc, char* argv[])
                if ( phi_local[idx] < phi_lower_limit )
                {
                   if ((abs(phi_local[idx] - phi_lower_limit )
-                        > 2*eps.dblsqrt )
+                        > 10*eps.dblsqrt )
                      && (flags.debug != 0))// && (mynode == rootnode))
                   {
                      std::cout << "Warning: step " 
@@ -1568,7 +1568,7 @@ int main( int argc, char* argv[])
                {
                   if ((abs(phi_local[idx] - phi_upper_limit )
                            > 
-                           2*eps.dbl
+                           10*eps.dbl
                       )
                            // ^ guess of error to be acceptably lost
                      && (flags.debug != 0))// && (mynode == rootnode))

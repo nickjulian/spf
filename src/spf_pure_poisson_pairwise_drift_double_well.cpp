@@ -94,6 +94,10 @@ int main( int argc, char* argv[])
    //double diffusivityT; diffusivityT = 3.0E-4;
    int Nv; Nv = 1; // number of walkers possible in a voxel
 
+   double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
+   double ww; ww = -0.1; // order energy
+   double TT; TT = 540; // order energy
+
    ////////////////////////////////////////////////////////////////////
 
    ////////////////////////////////////////////////////////////////////
@@ -707,6 +711,8 @@ int main( int argc, char* argv[])
                      );
 
                // assign values to jump_rates[]
+               double upward_shift;
+               upward_shift = -0.5*0.00008617*TT*ww;
                for( size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
                {  // performing this once for each neighbor pair achieved
                   // by only evaluating the neighbors in the positive 
@@ -714,13 +720,17 @@ int main( int argc, char* argv[])
                   // boundary conditions.
 
                   mm = (2*nn) +1; // 1:x+, 3:y+, 5:z+
-                  simple_identity_rate_gradient(
-                        phi_local_rates[
-                                    mm + Nvoxel_neighbors * idx],
-                        phi_local,
-                        neigh_idxs[mm],
-                        idx
+                  phi_local_rates[ mm + Nvoxel_neighbors * idx]
+                     = double_well_tilted_gradient(
+                        phi_local[idx]/Nv,
+                        phi_local[neigh_idxs[mm]]/Nv,
+                        upward_shift,
+                        ww,
+                        TT,
+                        tilt_alpha
                         );
+
+                  phi_local_rates[ mm + Nvoxel_neighbors*idx ] *= Nv;
 
                   if ( isnan( phi_local_rates[
                                  mm + Nvoxel_neighbors*idx ] ))
@@ -740,7 +750,7 @@ int main( int argc, char* argv[])
                }
 
                // evaluate stochastic fluxes to neighbor cells
-               conserved_jump_flux_pairwise_distributions(
+               conserved_jump_flux_pairwise_drift_distributions(
                      phi_local_flux,
                      rr,
                      phi_local,
@@ -1504,7 +1514,7 @@ int main( int argc, char* argv[])
                if ( phi_local[idx] < phi_lower_limit )
                {
                   if ((abs(phi_local[idx] - phi_lower_limit )
-                        > 2*eps.dblsqrt )
+                        > 10*eps.dblsqrt )
                      && (flags.debug != 0))// && (mynode == rootnode))
                   {
                      std::cout << "Warning: step " 
@@ -1568,7 +1578,7 @@ int main( int argc, char* argv[])
                {
                   if ((abs(phi_local[idx] - phi_upper_limit )
                            > 
-                           2*eps.dbl
+                           10*eps.dbl
                       )
                            // ^ guess of error to be acceptably lost
                      && (flags.debug != 0))// && (mynode == rootnode))

@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------------------
     Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
 ---------------------------------------------------------------------- */
-// File: spf_pure_poisson_pairwise_simple.cpp
+// File: spf_pure_gaussian_pairwise_simple.cpp
 
 #include <iostream>  // cout, cin, cerr, endl
 #include <iomanip>   // setw, setprecision
@@ -92,9 +92,11 @@ int main( int argc, char* argv[])
 
    // TODO: erase this and read Nt from the cmdline
    //double diffusivityT; diffusivityT = 3.0E-4;
-   int Nv; Nv = 1; // number of walkers possible in a voxel
+   int Nv; Nv = 1;
 
-   ////////////////////////////////////////////////////////////////////
+   double tilt_alpha; tilt_alpha = 0.999; // when 1, potential isn't tilted
+   double ww; ww = -0.1; // order energy
+   double TT; TT = 540; // order energy
 
    ////////////////////////////////////////////////////////////////////
    // read input parameters
@@ -139,7 +141,7 @@ int main( int argc, char* argv[])
 
    // establish field limits
    double phi_upper_limit, phi_lower_limit;
-   phi_upper_limit = Nv;
+   phi_upper_limit = double(Nv);
    phi_lower_limit = 0.0;
    ////////////////////////////////////////////////////////////////////
 
@@ -320,7 +322,7 @@ int main( int argc, char* argv[])
    //hh_y = 1.0/(Ny ); 
    //hh_z = 1.0/(Nz );
 
-   // TODO: make stability checks dynamic when diffusivity becomes variable
+   //TODO: make stability checks dynamic when diffusivity becomes variable
    // For the dynamics to be stable, require
    //  \delta t <= (h^2)/(2*D_{T}) on each independent axis.
    //if ( dt > hh_x*hh_x/(6.0*diffusivityT) ) failflag = -1;
@@ -473,7 +475,10 @@ int main( int argc, char* argv[])
       phi_local_flux( Nvoxel_neighbors * phi_local.size() );//[n,i,j,k]
 
    std::vector<double> // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
-      phi_local_rates( 
+      phi_local_rates_sqrt( 
+            Nvoxel_neighbors * phi_local.size(), 0.0);//[n,i,j,k]
+   std::vector<double> // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
+      phi_local_rates_sqrt_derivatives( 
             Nvoxel_neighbors * phi_local.size(), 0.0);//[n,i,j,k]
    ////////////////////////////////////////////////////////////////////
 
@@ -707,6 +712,9 @@ int main( int argc, char* argv[])
                      );
 
                // assign values to jump_rates[]
+               double upward_shift;
+               upward_shift = -0.5*0.00008617*TT*ww;
+               double sgn; sgn = 1.0;
                for( size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
                {  // performing this once for each neighbor pair achieved
                   // by only evaluating the neighbors in the positive 
@@ -714,21 +722,46 @@ int main( int argc, char* argv[])
                   // boundary conditions.
 
                   mm = (2*nn) +1; // 1:x+, 3:y+, 5:z+
-                  simple_identity_rate_gradient(
-                        phi_local_rates[
-                                    mm + Nvoxel_neighbors * idx],
-                        phi_local,
-                        neigh_idxs[mm],
-                        idx
-                        );
+                  phi_local_rates_sqrt[ mm + Nvoxel_neighbors * idx]
+                        = double_well_tilted_gradient(
+                              phi_local[idx],
+                              phi_local[neigh_idxs[mm]],
+                              upward_shift,
+                              ww,
+                              TT,
+                              tilt_alpha
+                              );
 
-                  if ( isnan( phi_local_rates[
+                  if (
+                     phi_local_rates_sqrt[mm + Nvoxel_neighbors * idx]
+                           > 0)
+                  {
+                     phi_local_rates_sqrt[mm + Nvoxel_neighbors * idx]
+                        = sqrt(
+                           phi_local_rates_sqrt[
+                                    mm + Nvoxel_neighbors * idx]);
+                  }
+                  else
+                  {
+                     if (
+                        phi_local_rates_sqrt[mm + Nvoxel_neighbors * idx]
+                        < 0
+                        )
+                     {
+                        phi_local_rates_sqrt[
+                                       mm + Nvoxel_neighbors * idx]
+                           = -1.0*sqrt(-1.0 * phi_local_rates_sqrt[
+                                       mm + Nvoxel_neighbors * idx]);
+                     }
+                     //else // rate == 0
+                  }
+                  if ( isnan( phi_local_rates_sqrt[
                                  mm + Nvoxel_neighbors*idx ] ))
                   {
                      if ( flags.debug != 0)
                         std::cout << "Error, node "
                            << mynode
-                           << ": phi_local_rates["
+                           << ": phi_local_rates_sqrt["
                            << mm + Nvoxel_neighbors*idx 
                            << "] is a NaN." 
                            << " phi_local[idx] : "
@@ -737,14 +770,46 @@ int main( int argc, char* argv[])
                         flags.fail = 1;
                   }
 
+                     phi_local_rates_sqrt_derivatives[
+                                 nn + Nvoxel_neighbors*idx
+                        ] = double_well_tilted_gradient_derivative(
+                              phi_local[idx],
+                              phi_local[neigh_idxs[mm]],
+                              upward_shift,
+                              ww,
+                              TT,
+                              tilt_alpha
+                              );
+                  //simple_identity_rate_gradient_derivative(
+                  //         phi_local_rates_sqrt_derivatives[
+                  //                  mm + Nvoxel_neighbors * idx],
+                  //         phi_local,
+                  //         neigh_idxs[mm],
+                  //         idx); 
+                  if ( isnan( phi_local_rates_sqrt_derivatives[
+                                 mm + Nvoxel_neighbors*idx ] ))
+                  {
+                     if ( flags.debug != 0)
+                        std::cout << "Error, node "
+                           << mynode
+                           << ": phi_local_rates_sqrt_derivatives["
+                           << mm + Nvoxel_neighbors*idx 
+                           << "] is a NaN." 
+                           << " phi_local[idx] : "
+                           << phi_local[idx]
+                           << std::endl;
+                     flags.fail = 1;
+                  }
                }
 
+
                // evaluate stochastic fluxes to neighbor cells
-               conserved_jump_flux_pairwise_distributions(
+               conserved_gaussian_flux_pairwise_distributions(
                      phi_local_flux,
                      rr,
                      phi_local,
-                     phi_local_rates,
+                     phi_local_rates_sqrt,
+                     phi_local_rates_sqrt_derivatives,
                      dt,
                      Nvoxel_neighbors,
                      neigh_idxs,
@@ -903,7 +968,7 @@ int main( int argc, char* argv[])
                //   // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
 
                //   phi_flux_downward_rates[kk + Nz*jj] 
-               //      = phi_local_rates[0 + Nvoxel_neighbors * idx];
+               //      = phi_local_rates_sqrt[0 + Nvoxel_neighbors * idx];
                //}
                //if (ii == Nx_local) // upper x-axis boundary of non-ghosts
                //{
@@ -911,7 +976,7 @@ int main( int argc, char* argv[])
                //      = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
 
                //   phi_flux_upward_rates[kk + Nz*jj] 
-               //      = phi_local_rates[1 + Nvoxel_neighbors * idx];
+               //      = phi_local_rates_sqrt[1 + Nvoxel_neighbors * idx];
                //}
             }
 
@@ -933,7 +998,7 @@ int main( int argc, char* argv[])
             // (0:x-, 1:x+, 2:y-, 3:y+, 4:z-, 5:z+)
 
             phi_flux_downward_rates[kk + Nz*jj] 
-               = phi_local_rates[0 + Nvoxel_neighbors * idx];
+               = phi_local_rates_sqrt[0 + Nvoxel_neighbors * idx];
 
             // upper x-axis boundary of non-ghosts
             idx = kk + Nz*(jj + Ny*Nx_local);
@@ -942,7 +1007,7 @@ int main( int argc, char* argv[])
                = phi_local_flux[ 1+ Nvoxel_neighbors * idx];
 
             phi_flux_upward_rates[kk + Nz*jj] 
-               = phi_local_rates[1 + Nvoxel_neighbors * idx];
+               = phi_local_rates_sqrt[1 + Nvoxel_neighbors * idx];
          }
       
       // send local flux info to neighboring nodes
@@ -967,7 +1032,7 @@ int main( int argc, char* argv[])
             phi_local_flux[ idx ] 
                = phi_flux_from_above[kk + Nz*jj];
 
-            phi_local_rates[ idx ]
+            phi_local_rates_sqrt[ idx ]
                = phi_flux_from_above_rates[kk + Nz*jj];
 
             // flux to upper neighbor of lower ghost along x-axis
@@ -976,7 +1041,7 @@ int main( int argc, char* argv[])
             phi_local_flux[ idx ]
                = phi_flux_from_below[kk + Nz*jj];
 
-            phi_local_rates[ idx ]
+            phi_local_rates_sqrt[ idx ]
                = phi_flux_from_below_rates[kk + Nz*jj];
          }
 
@@ -1024,7 +1089,7 @@ int main( int argc, char* argv[])
             // updates phi_local_flux with acceptable flux values
             phi_local_flux,   // integers
             phi_local,        // integers
-            phi_local_rates,  // not necessarily integers
+            phi_local_rates_sqrt,  // not necessarily integers
             rr,
             // neigh_order,
             Nvoxel_neighbors,
@@ -1267,7 +1332,7 @@ int main( int argc, char* argv[])
 
       // enforce_field_bounds( field, flux )
       //        using phi_local_flux[] for flux magnitudes
-      //        and phi_local_rates[] for balancing those magnitudes
+      //        and phi_local_rates_sqrt[] for balancing those magnitudes
       //        saving acceptable fluxes in phi_local_flux
       // Considered as an outward flux, neighbor orders are 
       //  equally balanced (assuming equal barrier heights).
@@ -1321,7 +1386,7 @@ int main( int argc, char* argv[])
             // updates phi_local_flux with acceptable flux values
             phi_local_flux,   // doubles
             phi_local,        // doubles
-            phi_local_rates,   // maybe use \sigma^2 ?
+            phi_local_rates_sqrt,   // maybe use \sigma^2 ?
             rr,
             // neigh_order,
             Nvoxel_neighbors,

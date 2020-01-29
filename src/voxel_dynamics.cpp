@@ -3208,7 +3208,7 @@ int SPF_NS::conserved_jump_flux_pairwise_distributions(
          {
             sgn = -1.0;
          }
-         if ( jump_rates[nn + Nvoxel_neighbors * idx] != 0.0)
+         if ( jump_rates[oo + Nvoxel_neighbors * idx] != 0.0)
              //  &&  // NOTE: the following checks fail for flux that
              //               could take on negative as well as positive
              //               values
@@ -3232,7 +3232,83 @@ int SPF_NS::conserved_jump_flux_pairwise_distributions(
          }
          else
          {
-            pairwise_flux[nn + Nvoxel_neighbors*idx ] = 0.0;
+            pairwise_flux[oo + Nvoxel_neighbors*idx ] = 0.0;
+         }
+      }
+   }
+   else
+   {
+      std::cout << "Error: pairwise_flux.size() not large enough"
+         << std::endl;
+   }
+
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::conserved_jump_flux_pairwise_drift_distributions( 
+            std::vector<double>& pairwise_flux, // 6* local_field size
+            SPF_NS::random& rr,
+            const std::vector<double>& phi_local,  // integers
+            const std::vector<double>& jump_rates, // 6* local_field size
+            const double& dt,
+            const size_t& Nvoxel_neighbors,
+            const std::vector<size_t>& neigh_idxs,
+            const double& phi_upper_limit,
+            const double& phi_lower_limit,
+            const size_t& idx
+            )
+{
+   // assuming periodic boundary conditions
+   // jump_rates must be evaluated before calling 
+
+   /////////////////////////////////////////////////////////
+   // Evaluate local fluxes and changes due to jump processes
+   //  using jump_rates.
+
+   double sgn; sgn = 1.0;
+   size_t oo;
+
+   if ( pairwise_flux.size() // prevent assignments out of bounds
+         >= ((Nvoxel_neighbors -1) + Nvoxel_neighbors*idx))
+   {
+      for( size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
+      {
+         oo = 2*nn +1;
+         if ( jump_rates[oo + Nvoxel_neighbors * idx] > 0.0)
+         {
+            sgn = 1.0;
+         }
+         if ( jump_rates[oo + Nvoxel_neighbors * idx] < 0.0)
+         {
+            sgn = -1.0;
+         }
+         if ( jump_rates[oo + Nvoxel_neighbors * idx] != 0.0)
+             //  &&  // NOTE: the following checks fail for flux that
+             //               could take on negative as well as positive
+             //               values
+             //(phi_local[neigh_idxs[oo]] < phi_upper_limit )
+             //  &&
+             //(phi_local[idx] > phi_lower_limit))
+         {
+            std::poisson_distribution<int> 
+               pd( 0.5*dt *sgn* jump_rates[oo + Nvoxel_neighbors*idx]);
+            // ^ 0.5 since pd will be used twice
+
+            pairwise_flux[oo + Nvoxel_neighbors*idx] 
+               = round(jump_rates[oo + Nvoxel_neighbors*idx]*dt) // drift
+                  + sgn*( pd( rr.generator ) - pd( rr.generator ));
+            //   = round(pd( rr.generator));
+
+            //if ( (pairwise_flux[nn + Nvoxel_neighbors*idx] 
+            //      + phi_local[neigh_idxs[nn]]) > phi_upper_limit)
+            //{
+            //   pairwise_flux[nn + Nvoxel_neighbors*idx] 
+            //      = phi_upper_limit - phi_local[neigh_idxs[nn]];
+            //}   // this will be taken care of in enforce_bounds_int()
+         }
+         else
+         {
+            pairwise_flux[oo + Nvoxel_neighbors*idx ] = 0.0;
          }
       }
    }

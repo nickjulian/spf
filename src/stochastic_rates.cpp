@@ -115,6 +115,35 @@ double SPF_NS::double_well_tilted(
                ) + upward_shift;
 }
 
+double SPF_NS::double_well_tilted_gradient(
+      //double* local_rate,  // output
+      //const std::vector<double>& local_field,
+      const double& xx, // local_field[idx],
+      const double& yy, // local_field[neigh_idxs[mm]],
+      //const double& rate_scale_factor,
+      const double& upward_shift,
+      const double& ww,
+      const double& TT,
+      const double& alpha
+      //const size_t& idx
+      )
+{
+   double sgn; sgn = 1.0;
+   if (xx > yy) sgn = 1.0;
+   if (xx < yy) sgn = -1.0;
+   if ((xx - yy) == 0.0 ) return 0.0; // this is probably bad
+   if ((xx - yy) == 1.0 ) return 1E10;  // huge number
+   if ((xx - yy) == -1.0 ) return -1E10;  // huge number
+   // \omega(2x-1)+k_{B}T[\alpha ln(x/(1-x))+(alpha-1)/(1-x)]
+   return 
+      sgn*(
+         ww *(2*sgn*(xx-yy) -1) + 0.00008617*TT*(
+                  alpha * log(sgn*(xx-yy)/(1.0 - sgn*(xx-yy))) 
+                  + (alpha -1)/(1 - sgn*(xx-yy))
+               ) + upward_shift
+         );
+}
+
 double SPF_NS::double_well_tilted_derivative(
       //double& local_rate_derivative, // output
       //const std::vector<double>& local_field,
@@ -128,7 +157,7 @@ double SPF_NS::double_well_tilted_derivative(
       )
 {
    if (xx <= 0.0 ) return 0.0; // this is probably bad
-   if (xx >= 1.0 ) return -1E10;  // huge negative number
+   if (xx >= 1.0 ) return 1E10;  // huge number
    //double xx; xx = local_field[idx];
    // 2*\omega+k_{B}T[(\alpha/x) + (\alpha/(1-x)) - (\alpha -1)/((1-x)^{2})]
    //if ( (xx == 0.0 ) || (xx == 1.0))
@@ -152,10 +181,58 @@ double SPF_NS::double_well_tilted_derivative(
 
    return ((0.5/sigma)
       *(2.0*ww + (0.00008617)*TT*( 
-                                    (alpha/xx) + (alpha/(1.0-xx)) 
+                                    (alpha/xx) + (alpha/(1.0-xx))
                                     + (alpha -1.0)/((1.0-xx)*(1.0-xx))
                                  )));
+
 }
+
+double SPF_NS::double_well_tilted_gradient_derivative(
+      //double& local_rate_derivative, // output
+      //const std::vector<double>& local_field,
+      const double& xx, // local_field[idx],
+      const double& yy, // local_field[idx],
+      //const double& rate_scale_factor,
+      const double& upward_shift,
+      const double& ww,
+      const double& TT,
+      const double& alpha
+      //const size_t& idx
+      )
+{
+   double sgn; sgn = 1.0;
+   if (xx > yy) sgn = 1.0;
+   if (xx < yy) sgn = -1.0;
+   if ((xx - yy) == 0.0 ) return 0.0; // this is probably bad
+   if ((xx - yy) == -1.0 ) return -1E10;  // huge number
+   if ((xx - yy) == 1.0 ) return 1E10;  // huge number
+
+   double sigma;
+   double tmpdbl;
+   tmpdbl = ww *(2*sgn*(xx-yy) -1) + (0.00008617)*TT*(
+                  alpha * log(sgn*(xx - yy)/(1.0 - sgn*(xx-yy))) 
+                  + (alpha -1)/(1 - sgn*(xx-yy))
+               )
+               + upward_shift;
+   if ( tmpdbl > 0 ) sigma = sqrt( tmpdbl );
+   else if (tmpdbl < 0.0)
+   {
+      sigma = sqrt( -1.0* tmpdbl);
+   }
+   else if ((tmpdbl == 0.0) || isnan(tmpdbl))
+   {
+      return 0.0;
+   }
+
+   return sgn*((0.5/sigma)
+      *(2.0*ww + (0.00008617)*TT*( 
+                                    (alpha/(sgn*(xx - yy))) 
+                                    + (alpha/(1.0-sgn*(xx - yy))) 
+                                    + (alpha -1.0)/((1.0-sgn*(xx - yy))
+                                       *(1.0-sgn*(xx - yy)))
+                                 )));
+}
+
 //int SPF_NS::double_well_tilted_ie(  // includes interface energy?
 //      double& local_rate,  // output
 //      const std::vector<double>& local_field,

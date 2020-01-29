@@ -708,7 +708,6 @@ int main( int argc, char* argv[])
                      );
 
                // assign values to jump_rates[]
-               double sgn; sgn = 1.0;
                for( size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
                {  // performing this once for each neighbor pair achieved
                   // by only evaluating the neighbors in the positive 

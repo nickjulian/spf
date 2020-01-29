@@ -259,6 +259,19 @@ namespace SPF_NS
       const size_t& idx
       );
 
+   int conserved_jump_flux_pairwise_drift_distributions( 
+      std::vector<double>& pairwise_flux, // 6* local_field size
+      SPF_NS::random& rr,
+      const std::vector<double>& phi_local,  // integers
+      const std::vector<double>& jump_rates, // 6* local_field size
+      const double& dt,
+      const size_t& Nvoxel_neighbors,
+      const std::vector<size_t>& neigh_idxs,
+      const double& phi_upper_limit,
+      const double& phi_lower_limit,
+      const size_t& idx
+      );
+
    int conserved_gaussian_flux_separate_distributions( 
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,

@@ -54,6 +54,15 @@ namespace SPF_NS
          //const size_t& idx
          );
 
+   double double_well_tilted_gradient(
+         const double& xx, // local_field[idx],
+         const double& yy, // local_field[neigh_idxs[mm]],
+         const double& upward_shift,
+         const double& ww,
+         const double& TT,
+         const double& alpha
+         );
+
    double double_well_tilted_derivative(
          //double& local_rate_derivative,  // output
          //const std::vector<double>& local_field,
@@ -64,6 +73,15 @@ namespace SPF_NS
          const double& TT,
          const double& alpha
          //const size_t& idx
+         );
+
+   double double_well_tilted_gradient_derivative(
+         const double& xx, // local_field[idx],
+         const double& yy, // local_field[idx],
+         const double& upward_shift,
+         const double& ww,
+         const double& TT,
+         const double& alpha
          );
 } // SPF_NS
 #endif

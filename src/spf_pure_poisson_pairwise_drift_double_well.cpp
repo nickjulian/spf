@@ -760,7 +760,8 @@ int main( int argc, char* argv[])
                      neigh_idxs,
                      phi_upper_limit,
                      phi_lower_limit,
-                     idx
+                     Nx_local, Ny, Nz,
+                     ii, jj, kk
                      );
 
                for(size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
@@ -1030,7 +1031,7 @@ int main( int argc, char* argv[])
       // end debug
       /****************************************************************/
       /* enforce voxel value bounds ***********************************/
-      enforce_bounds_pairwise_dbl_outward(
+      enforce_bounds_pairwise_int_outward(
             // updates phi_local_flux with acceptable flux values
             phi_local_flux,   // integers
             phi_local,        // integers
@@ -1327,7 +1328,7 @@ int main( int argc, char* argv[])
       //  yield the same total number of walkers lost or gained.
 
       // check that inward fluxes don't exceed local bounds
-      enforce_bounds_pairwise_dbl_inward(
+      enforce_bounds_pairwise_int_inward(
             // updates phi_local_flux with acceptable flux values
             phi_local_flux,   // doubles
             phi_local,        // doubles

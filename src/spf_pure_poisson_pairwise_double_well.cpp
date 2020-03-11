@@ -1035,8 +1035,8 @@ int main( int argc, char* argv[])
       /* enforce voxel value bounds ***********************************/
       enforce_bounds_pairwise_int_outward(
             // updates phi_local_flux with acceptable flux values
-            phi_local_flux,   // integers
-            phi_local,        // integers
+            phi_local_flux,
+            phi_local,
             phi_local_rates,  // not necessarily integers
             rr,
             // neigh_order,
@@ -1332,8 +1332,8 @@ int main( int argc, char* argv[])
       // check that inward fluxes don't exceed local bounds
       enforce_bounds_pairwise_int_inward(
             // updates phi_local_flux with acceptable flux values
-            phi_local_flux,   // doubles
-            phi_local,        // doubles
+            phi_local_flux,
+            phi_local,
             phi_local_rates,   // maybe use \sigma^2 ?
             rr,
             // neigh_order,
@@ -1517,7 +1517,7 @@ int main( int argc, char* argv[])
                if ( phi_local[idx] < phi_lower_limit )
                {
                   if ((abs(phi_local[idx] - phi_lower_limit )
-                        > 10*eps.dblsqrt )
+                        > 2*eps.dblsqrt )
                      && (flags.debug != 0))// && (mynode == rootnode))
                   {
                      std::cout << "Warning: step " 
@@ -1581,7 +1581,7 @@ int main( int argc, char* argv[])
                {
                   if ((abs(phi_local[idx] - phi_upper_limit )
                            > 
-                           10*eps.dbl
+                           2*eps.dbl
                       )
                            // ^ guess of error to be acceptably lost
                      && (flags.debug != 0))// && (mynode == rootnode))
@@ -1589,8 +1589,8 @@ int main( int argc, char* argv[])
                      std::cout << "Warning: step " 
                         << time_step 
                         << " flux into voxel caused upper bound breach"
-                        << " phi_local[" << idx << "]-1: "
-                        << phi_local[idx] -1.0
+                        << " phi_local[" << idx << "] - phi_upper_limit: "
+                        << phi_local[idx] - phi_upper_limit
                         << std::endl;
                      for ( size_t mm=0; mm < (Nvoxel_neighbors/2); ++mm)
                      {

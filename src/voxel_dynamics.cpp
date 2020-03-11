@@ -2978,8 +2978,8 @@ int SPF_NS::enforce_bounds_pairwise_int_inward(
             {  // renormalize the inward fluxes
                // debug
                //std::cout << "reducing inward flux " 
-               //   << "; phi_local[" << idx << "] - outward_flux : "
-               //   << phi_local[idx] << " - " << outward_flux 
+               //   << "; phi_local[" << idx << "] - inward_flux : "
+               //   << phi_local[idx] << " - " << inward_flux 
                //   << std::endl;
                // end debug
                for ( size_t nn=0; nn < (Nvoxel_neighbors/2); ++nn)
@@ -3070,6 +3070,10 @@ int SPF_NS::enforce_bounds_pairwise_int_inward(
                      current_flux 
                         -= phi_local_flux[
                              ee + Nvoxel_neighbors* neigh_idxs[dest_idx]];
+                     // TODO: this ^ requires even neighbors of ghosts to
+                     //       be updated, but only odd ghost neighbors are
+                     //       currently communicated after checking 
+                     //       outward flux bounds
                   }
                   if (( current_flux < phi_local[ neigh_idxs[dest_idx]])
                         &&
@@ -3189,6 +3193,12 @@ int SPF_NS::enforce_bounds_pairwise_int_inward(
                   }
                   else
                   {
+                     // debug
+                     //std::cout //<< "node " << mynode 
+                     //   << "Warning: correction of rounding"
+                     //  << " error incomplete, idx: " << idx
+                     //   << std::endl;
+                     // end debug
                      break;
                   }
                } // while ( rounding_error > 0)

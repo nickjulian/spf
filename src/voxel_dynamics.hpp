@@ -360,7 +360,15 @@ namespace SPF_NS
       const int& Ny,
       const int& Nz);
 
-   double laplacian(
+   double laplacian1d(
+         const double& hh_x,
+         const std::vector<double>& local_field,
+         const size_t& idx,
+         const size_t& neigh_idx_x_a,
+         const size_t& neigh_idx_x_b
+         );
+
+   double laplacian3d(
          const double& hh_x,
          const double& hh_y,
          const double& hh_z,

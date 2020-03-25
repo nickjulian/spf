@@ -71,6 +71,56 @@ int SPF_NS::read_cmdline_options(
       MPI_Comm comm
       )
 {
+   // variables created just to satisfy the full function prototype
+   double hh_x;
+   double ww;
+   double shape_constant;
+   double mobility;
+   double kappa;
+   double c_alpha;
+   double c_beta;
+
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         Nv,
+         hh_x,
+         ww,
+         shape_constant,
+         mobility,
+         kappa,
+         c_alpha,
+         c_beta,
+         write_period,
+         flags,
+         output_prefix,
+         input_field_name,
+         mynode, rootnode,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& Nv,
+      double& hh_x,
+      double& ww,
+      double& shape_constant,
+      double& mobility,
+      double& kappa,
+      double& c_alpha,
+      double& c_beta,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
    string parameter_filename;
 
    // order of reading parameters allows cmdline to override those in file
@@ -89,6 +139,13 @@ int SPF_NS::read_cmdline_options(
                      dt,
                      Nt,
                      Nv,
+                     hh_x,
+                     ww,
+                     shape_constant,
+                     mobility,
+                     kappa,
+                     c_alpha,
+                     c_beta,
                      write_period,
                      output_prefix,
                      input_field_name,
@@ -175,9 +232,65 @@ int SPF_NS::read_cmdline_options(
       {
          flags.calcstat= 1;
       }
-      else if ( args[idx] == "--debug" ) 
+      else if ( args[idx] == "-debug" ) 
       {
          flags.debug = 1;
+      }
+      else if ( args[idx] == "-mesh-size" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> hh_x;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-order-energy" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> ww;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-shape-constant" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> shape_constant;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-mobility" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> mobility;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-kappa" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> kappa;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-c-alpha" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> c_alpha;
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-c-beta" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            istringstream( args[idx + 1] ) >> c_beta;
+            idx += 1;
+         }
       }
    }
 
@@ -330,7 +443,7 @@ int SPF_NS::read_cmdline_options_for_escape_time_ensembles(
       {
          flags.calcstat= 1;
       }
-      else if ( args[idx] == "--debug" ) 
+      else if ( args[idx] == "-debug" ) 
       {
          flags.debug = 1;
       }

@@ -4811,8 +4811,23 @@ int SPF_NS::conserved_gaussian_flux_separate_distributions_ito(
 }
 
 
+double SPF_NS::laplacian1d(
+         const double& hh,
+         const std::vector<double>& local_field,
+         const size_t& idx,
+         const size_t& neigh_idx_x_a,
+         const size_t& neigh_idx_x_b
+      )
+{
+   return (1.0/(hh*hh))*
+            ( 
+               local_field[neigh_idx_x_a]
+               -2.0* local_field[idx]
+               + local_field[neigh_idx_x_b]
+            );
+}
 
-double SPF_NS::laplacian(
+double SPF_NS::laplacian3d(
          const double& hh_x,
          const double& hh_y,
          const double& hh_z,
@@ -4921,7 +4936,7 @@ int SPF_NS::laplacian_flux(
    
    local_change[ idx ] 
       += diffusivity * dt *
-         laplacian(
+         laplacian3d(
                   hh_x, hh_y, hh_z,
                   Nz,
                   local_field,

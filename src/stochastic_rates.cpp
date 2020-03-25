@@ -95,6 +95,51 @@ int SPF_NS::simple_identity_rate_gradient_derivative(
    return EXIT_SUCCESS;
 }
 
+double SPF_NS::double_well_srscd(
+         const double& c_t,
+         const double& c_alpha,
+         const double& c_beta,
+         const double& lap, // laplacian
+         const double& shape_constant,
+         const double& gradient_coefficient
+      )
+{
+   return 2*shape_constant*(c_t - c_alpha)*(c_beta - c_t)
+            *(1 - 2*c_t) - gradient_coefficient*lap;
+}
+
+double SPF_NS::double_well_muhomo_finel(
+      const double& xx,  
+      const double& upward_shift,
+      const double& ww,
+      const double& boltz
+      )
+{
+   // homogeneous part of alloy chemical potential
+   if (xx <= 0.0 ) return 0.0; // this is probably bad
+   if (xx >= 1.0 ) return 1E10;  // huge number
+   return ww * (2*xx - 1.0)
+            + boltz*log(xx/(1.0 - xx))
+            + upward_shift;
+}
+
+double SPF_NS::double_well_mu_finel(
+      const double& xx, // current voxel concentration
+      const double& yy, // a neighbor's concentration
+      const double& upward_shift,
+      const double& ww,
+      const double& boltz,
+      const double& AA,
+      const double& BB
+      )
+{
+   // alloy chemical potential including concentration gradient
+   //  and lambda (coefficient of the gradient).
+   return double_well_muhomo_finel(xx, upward_shift, ww, boltz)
+            + (AA + (BB * xx * (1 - xx))) // lambda
+               * abs(xx - yy);   // TODO: questionable gradient
+}
+
 double SPF_NS::double_well_tilted(
       //double* local_rate,  // output
       //const std::vector<double>& local_field,

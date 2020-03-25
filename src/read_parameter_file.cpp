@@ -71,6 +71,56 @@ int SPF_NS::read_parameter_file(
       MPI_Comm comm
       )
 {
+      double hh_x;
+      double ww;
+      double shape_constant;
+      double mobility;
+      double kappa;
+      double c_alpha;
+      double c_beta;
+      return read_parameter_file(
+                  parameter_filename,
+                  flags,
+                  dt,
+                  Nt,
+                  Nv,
+                  hh_x,
+                  ww,
+                  shape_constant,
+                  mobility,
+                  kappa,
+                  c_alpha,
+                  c_beta,
+                  write_period,
+                  output_prefix,
+                  input_field_name,
+                  mynode,
+                  rootnode,
+                  comm
+                  );
+}
+
+int SPF_NS::read_parameter_file(
+      const string& parameter_filename,
+      int_flags& flags,
+      double& dt,
+      int& Nt,
+      int& Nv,
+      double& hh_x,
+      double& ww,
+      double& shape_constant,
+      double& mobility,
+      double& kappa,
+      double& c_alpha,
+      double& c_beta,
+      int& write_period,
+      string& output_prefix,
+      string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
    ifstream parameter_file( parameter_filename.c_str() );
    if ( parameter_file.is_open() )
    {
@@ -120,6 +170,34 @@ int SPF_NS::read_parameter_file(
          {
             file_line_stream >> Nv;
             flags.Nt = 1;
+         }
+         else if (! line_chunk.compare("-mesh-size") )
+         {
+            file_line_stream >> hh_x;
+         }
+         else if (! line_chunk.compare("-order-energy") )
+         {
+            file_line_stream >> ww;
+         }
+         else if (! line_chunk.compare("-shape-constant") )
+         {
+            file_line_stream >> shape_constant;
+         }
+         else if (! line_chunk.compare("-mobility") )
+         {
+            file_line_stream >> mobility;
+         }
+         else if (! line_chunk.compare("-kappa") )
+         {
+            file_line_stream >> kappa;
+         }
+         else if (! line_chunk.compare("-c-alpha") )
+         {
+            file_line_stream >> c_alpha;
+         }
+         else if (! line_chunk.compare("-c-beta") )
+         {
+            file_line_stream >> c_beta;
          }
          else if (! line_chunk.compare("-wp") )
          {

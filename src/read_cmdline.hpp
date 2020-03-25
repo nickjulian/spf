@@ -36,6 +36,27 @@ int read_cmdline_options(
       double& dt,
       int& Nt,
       int& Nv,
+      double& hh_x,
+      double& ww,
+      double& shape_constant,
+      double& mobility,
+      double& kappa,
+      double& c_alpha,
+      double& c_beta,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      );
+
+int read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& Nv,
       int& write_period,
       int_flags& flags,
       string& output_prefix,

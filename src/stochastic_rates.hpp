@@ -21,6 +21,33 @@ namespace SPF_NS
          //const double& rate_scale_factor,
          const size_t& idx
          );
+
+   double double_well_srscd(
+            const double& c_t,
+            const double& c_alpha,
+            const double& c_beta,
+            const double& lap, // laplacian
+            const double& shape_constant,
+            const double& gradient_coefficient
+         );
+
+   double double_well_mu_finel(
+         const double& xx, // current voxel concentration
+         const double& yy, // a neighbor's concentration
+         const double& upward_shift,
+         const double& ww,
+         const double& boltz,
+         const double& AA,
+         const double& BB
+         );
+
+   double double_well_muhomo_finel(
+         const double& xx,  
+         const double& upward_shift,
+         const double& ww,
+         const double& boltz
+         );
+
    int simple_identity_rate_gradient(
          double& local_rate,  // output
          const std::vector<double>& local_field,

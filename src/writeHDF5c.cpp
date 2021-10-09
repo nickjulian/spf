@@ -178,10 +178,10 @@ int SPF_NS::append_phi_to_hdf5_multinode(
    count[1] = dims_local[1];
    count[2] = dims_local[2];
 
-   hsize_t stride[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
-   hsize_t block[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+   //hsize_t stride[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+   //hsize_t block[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
 
    //cout << "node " << mynode << " offset_local: "; // debug
    //for (size_t ii=0; ii < 3 ; ++ii) // debug
@@ -196,9 +196,11 @@ int SPF_NS::append_phi_to_hdf5_multinode(
                                  memspace_id,
                                  H5S_SELECT_SET, // H5S_seloper_t op
                                  offset_local, // const hsize_t *start,
-                                 stride, // const hsize_t *stride,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
                                  count, // const hsize_t *count,
-                                 block // const hsize_t *block,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
                                  );
    if ( status < 0 ) 
    {
@@ -214,9 +216,11 @@ int SPF_NS::append_phi_to_hdf5_multinode(
                                  dataspace_id,
                                  H5S_SELECT_SET, // H5S_seloper_t op
                                  offset, // const hsize_t *start,
-                                 stride, // const hsize_t *stride,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
                                  count, // const hsize_t *count,
-                                 block // const hsize_t *block,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
                                  );
    if ( status < 0 ) 
    {
@@ -333,10 +337,10 @@ int SPF_NS::write_phi_to_hdf5_multinode(
    count[1] = dims_local[1];
    count[2] = dims_local[2];
 
-   hsize_t stride[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
-   hsize_t block[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+   //hsize_t stride[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+   //hsize_t block[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
 
    //cout << "node " << mynode << " offset_local: "; // debug
    //for (size_t ii=0; ii < 3 ; ++ii) // debug
@@ -351,9 +355,11 @@ int SPF_NS::write_phi_to_hdf5_multinode(
                                  memspace_id,
                                  H5S_SELECT_SET, // H5S_seloper_t op
                                  offset_local, // const hsize_t *start,
-                                 stride, // const hsize_t *stride,
+                                 NULL, // identical to having stride==1
+                                 //stride, // const hsize_t *stride,
                                  count, // const hsize_t *count,
-                                 block // const hsize_t *block,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
                                  );
    if ( status < 0 ) 
    {
@@ -368,9 +374,11 @@ int SPF_NS::write_phi_to_hdf5_multinode(
                                  dataspace_id,
                                  H5S_SELECT_SET, // H5S_seloper_t op
                                  offset, // const hsize_t *start,
-                                 stride, // const hsize_t *stride,
+                                 NULL, // identical to having stride==1
+                                 //stride, // const hsize_t *stride,
                                  count, // const hsize_t *count,
-                                 block // const hsize_t *block,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
                                  );
    if ( status < 0 ) 
    {
@@ -566,10 +574,10 @@ int SPF_NS::append_phi_to_hdf5_singlenode(
    count[1] = dims[1];
    count[2] = dims[2];
 
-   hsize_t stride[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
-   hsize_t block[ndims];
-   for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+   //hsize_t stride[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+   //hsize_t block[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
 
    status = H5Dwrite(
                dataset_id, // dataset_id

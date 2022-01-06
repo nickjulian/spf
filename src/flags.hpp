@@ -17,6 +17,7 @@ struct int_flags
    unsigned int Nt;
    unsigned int Nv;
    unsigned int wp;
+   unsigned int datasetPath;
    unsigned int output_prefix;
    unsigned int input_field;
    unsigned int calcstat;

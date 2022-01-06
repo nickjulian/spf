@@ -1845,18 +1845,47 @@ int SPF_NS::enforce_bounds_int_outward(
                   //   dest_idx = ud(rr.generator);
                   //   dest_flag = true;
                   //}
+
+                  // randomize the order of index choice
+                  std::vector<int>
+                     neighIdxsToSample( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     neighIdxsToSample[nn] = (int) nn;
+                  }
+
+                  std::vector<int>
+                     randomNeighIdxs( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     std::uniform_int_distribution<int>
+                        uid( 0, neighIdxsToSample.size() -1);
+                     int chosenIdx = uid( rr.generator);
+
+                     randomNeighIdxs[nn]
+                        = neighIdxsToSample[ chosenIdx];
+
+                     // erase the chosen idx from neighIdxsToSample
+                     neighIdxsToSample.erase(
+                           neighIdxsToSample.begin() + chosenIdx
+                           );
+                  }
+
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the lowest outward flux rate
-                     if((phi_local_flux[ nn + Nvoxel_neighbors*idx] > 0)
+                     if((phi_local_flux[ 
+                              randomNeighIdxs[ nn] 
+                              + Nvoxel_neighbors*idx] > 0)
                           &&
                         ((phi_local_rates[dest_idx + Nvoxel_neighbors*idx]
                            > 
-                          phi_local_rates[ nn + Nvoxel_neighbors*idx]
+                          phi_local_rates[
+                           randomNeighIdxs[ nn] + Nvoxel_neighbors*idx]
                          )
                         || (dest_flag == false)
                         )) // this will prioritize lower index neighbors...
                      {
-                        dest_idx = nn;
+                        dest_idx = randomNeighIdxs[nn];
                         dest_flag = true;
                      }
                   }
@@ -1882,22 +1911,50 @@ int SPF_NS::enforce_bounds_int_outward(
                   {
                      dest_flag = true;
                   }
+
+                  // randomize the choice of neighbor indices
+                  std::vector<int> 
+                     neighIdxsToSample( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     neighIdxsToSample[nn] = (int) nn;
+                  }
+
+                  std::vector<int> 
+                     randomNeighIdxs( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     std::uniform_int_distribution<int> 
+                        uid( 0, neighIdxsToSample.size() -1);
+                     int chosenIdx = uid( rr.generator);
+
+                     randomNeighIdxs[nn] 
+                        = neighIdxsToSample[ chosenIdx];
+
+                     // erase the chosen idx from neighIdxsToSample
+                     neighIdxsToSample.erase(
+                           neighIdxsToSample.begin() + chosenIdx
+                           );
+                  }
+
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the greatest outward flux rate
                      if ((
                          (phi_local_rates[dest_idx + Nvoxel_neighbors*idx]
                            < 
-                          phi_local_rates[nn + Nvoxel_neighbors*idx]
+                          phi_local_rates[
+                           randomNeighIdxs[ nn] + Nvoxel_neighbors*idx]
                          )
                               || (dest_flag == false)
                          ) && (
                            // ensure neighbor isn't full
-                           phi_local[ neigh_idxs[nn]]
+                           phi_local[ neigh_idxs[
+                              randomNeighIdxs[nn]]]
                               < phi_upper_limit
                          )
                         )
                      {
-                           dest_idx = nn;
+                           dest_idx = randomNeighIdxs[nn];
                            dest_flag = true;
                      }
                   }
@@ -2696,6 +2753,32 @@ int SPF_NS::enforce_bounds_int_inward(
                   {
                      dest_flag = true;
                   }
+
+                  // ensure order of redistribution is random
+                  std::vector<int> 
+                     neighIdxsToSample( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     neighIdxsToSample[nn] = (int) nn;
+                  }
+
+                  std::vector<int> 
+                     randomNeighIdxs( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     std::uniform_int_distribution<int> 
+                        uid( 0, neighIdxsToSample.size() -1);
+                     int chosenIdx = uid( rr.generator);
+
+                     randomNeighIdxs[nn] 
+                        = neighIdxsToSample[ chosenIdx];
+
+                     // erase the chosen idx from neighIdxsToSample
+                     neighIdxsToSample.erase(
+                           neighIdxsToSample.begin() + chosenIdx
+                           );
+                  }
+
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the greatest outward flux rate
                      if ((phi_local_rates[
@@ -2703,8 +2786,9 @@ int SPF_NS::enforce_bounds_int_inward(
                               + Nvoxel_neighbors*neigh_idxs[dest_idx]]
                            < 
                          phi_local_rates[
-                              neigh_pairs[nn] 
-                                 + Nvoxel_neighbors*neigh_idxs[nn]]
+                              neigh_pairs[ randomNeighIdxs[nn]] 
+                                 + Nvoxel_neighbors
+                                    *neigh_idxs[ randomNeighIdxs[nn]]]
                         )
                            || (dest_flag == false)
                         )
@@ -2715,21 +2799,26 @@ int SPF_NS::enforce_bounds_int_inward(
                         {
                            current_flux += 
                               phi_local_flux[
-                                 mm + Nvoxel_neighbors* neigh_idxs[nn]];
+                                 mm + Nvoxel_neighbors 
+                                    * neigh_idxs[ randomNeighIdxs[nn]]];
                         }
                         if (( current_flux
                                    <
-                                 phi_local[ neigh_idxs[nn]]
+                                 phi_local[ 
+                                    neigh_idxs[ randomNeighIdxs[nn]]]
                               )&&
                               // disallow taking from ghosts
                               // TODO: resolve this assymmetry
-                              ( neigh_idxs[nn] >= Ny*Nz )
+                              ( neigh_idxs[
+                                 randomNeighIdxs[nn]] >= Ny*Nz )
                               &&
-                              ( neigh_idxs[nn] < (Nx_local+1)*Ny*Nz)
-                                )
+                              ( neigh_idxs[
+                                 randomNeighIdxs[ nn]]
+                                < (Nx_local+1)*Ny*Nz)
+                           )
                         {
                            dest_flag = true;
-                           dest_idx = nn;
+                           dest_idx = randomNeighIdxs[ nn];
                         }
                      }
                   }
@@ -2761,6 +2850,31 @@ int SPF_NS::enforce_bounds_int_inward(
                   {
                      dest_flag = true;
                   }
+
+                  // ensure order of redistribution is random
+                  std::vector<int> 
+                     neighIdxsToSample( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     neighIdxsToSample[nn] = (int) nn;
+                  }
+
+                  std::vector<int> 
+                     randomNeighIdxs( Nvoxel_neighbors, 0);
+                  for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
+                  {
+                     std::uniform_int_distribution<int> 
+                        uid( 0, neighIdxsToSample.size() -1);
+                     int chosenIdx = uid( rr.generator);
+
+                     randomNeighIdxs[nn] 
+                        = neighIdxsToSample[ chosenIdx];
+
+                     // erase the chosen idx from neighIdxsToSample
+                     neighIdxsToSample.erase(
+                           neighIdxsToSample.begin() + chosenIdx
+                           );
+                  }
                   for ( size_t nn=0; nn < Nvoxel_neighbors; ++nn)
                   {  // choose neigh with the lowest outward flux rate
                      if (((phi_local_rates[
@@ -2768,20 +2882,22 @@ int SPF_NS::enforce_bounds_int_inward(
                               + Nvoxel_neighbors*neigh_idxs[dest_idx]]
                            >
                          phi_local_rates[
-                              neigh_pairs[nn] 
-                                 + Nvoxel_neighbors*neigh_idxs[nn]]
+                              neigh_pairs[ randomNeighIdxs[nn]] 
+                                 + Nvoxel_neighbors
+                                    *neigh_idxs[ randomNeighIdxs[nn]]]
                          )
                               || (dest_flag == false)
                          )
                            && 
                         ( phi_local_flux[
-                                 neigh_pairs[nn] 
-                                    + Nvoxel_neighbors* neigh_idxs[nn]]
+                                 neigh_pairs[ randomNeighIdxs[nn]] 
+                                    + Nvoxel_neighbors
+                                      * neigh_idxs[ randomNeighIdxs[nn]]]
                                     > 0)
                         )
                      {
                         dest_flag = true;
-                        dest_idx = nn;
+                        dest_idx = randomNeighIdxs[nn];
                      }
                   }
                   // remove the extra walker to the chosen flux

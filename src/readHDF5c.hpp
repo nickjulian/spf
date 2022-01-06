@@ -27,6 +27,7 @@ namespace SPF_NS
    int read_phi_from_hdf5(
          const hid_t inFile_id,
          std::vector<double>& phi,
+         const std::string datasetPath,
          const std::vector<size_t>& idx_start, 
          const std::vector<size_t>& idx_end,
          //const std::vector<int>& periodicity,
@@ -46,6 +47,7 @@ namespace SPF_NS
 
    int read_dims_from_hdf5(// sets dims[i] = # elements in i^{th} dimension
          const hid_t inFile_id,
+         const std::string datasetPath,
          std::vector<hsize_t>& dims,
          int_flags& flags,
          const int& mynode,

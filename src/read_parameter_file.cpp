@@ -78,6 +78,7 @@ int SPF_NS::read_parameter_file(
       double kappa;
       double c_alpha;
       double c_beta;
+      std::string datasetPath = "/phi";
       return read_parameter_file(
                   parameter_filename,
                   flags,
@@ -94,6 +95,7 @@ int SPF_NS::read_parameter_file(
                   write_period,
                   output_prefix,
                   input_field_name,
+                  datasetPath,
                   mynode,
                   rootnode,
                   comm
@@ -116,6 +118,52 @@ int SPF_NS::read_parameter_file(
       int& write_period,
       string& output_prefix,
       string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
+      std::string datasetPath = "/phi";
+      return read_parameter_file(
+                  parameter_filename,
+                  flags,
+                  dt,
+                  Nt,
+                  Nv,
+                  hh_x,
+                  ww,
+                  shape_constant,
+                  mobility,
+                  kappa,
+                  c_alpha,
+                  c_beta,
+                  write_period,
+                  output_prefix,
+                  input_field_name,
+                  datasetPath,
+                  mynode,
+                  rootnode,
+                  comm
+                  );
+}
+
+int SPF_NS::read_parameter_file(
+      const string& parameter_filename,
+      int_flags& flags,
+      double& dt,
+      int& Nt,
+      int& Nv,
+      double& hh_x,
+      double& ww,
+      double& shape_constant,
+      double& mobility,
+      double& kappa,
+      double& c_alpha,
+      double& c_beta,
+      int& write_period,
+      string& output_prefix,
+      string& input_field_name,
+      string& datasetPath,
       const int& mynode,
       const int& rootnode,
       MPI_Comm comm
@@ -155,6 +203,11 @@ int SPF_NS::read_parameter_file(
          {
             file_line_stream >> input_field_name;
             flags.input_field = 1;
+         }
+         else if (! line_chunk.compare("-datasetPath"))
+         {
+            file_line_stream >> datasetPath;
+            flags.datasetPath = 1;
          }
          else if (! line_chunk.compare("-dt") )
          {

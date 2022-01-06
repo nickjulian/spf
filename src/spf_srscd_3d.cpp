@@ -114,6 +114,7 @@ int main( int argc, char* argv[])
    std::string inputFileName;
    std::vector<string> args( argv, argv + argc );
    std::string output_prefix;
+   std::string datasetPath;
    int_flags flags;
    flags.fail = 0;
 
@@ -135,6 +136,7 @@ int main( int argc, char* argv[])
             flags,
             output_prefix,
             inputFileName,
+            datasetPath,
             mynode,
             rootnode,
             MPI_COMM_WORLD
@@ -151,6 +153,7 @@ int main( int argc, char* argv[])
       std::cout << "running with parameters: "
                 << "  -o " << output_prefix << std::endl
                 << "  -i " << inputFileName << std::endl
+                << "  -datasetPath " << datasetPath << std::endl
                 << "  -Nt " << Nt << std::endl
                 << "  -Nv " << Nv << std::endl
                 << "  -mesh-size " << hh_x << std::endl
@@ -195,6 +198,7 @@ int main( int argc, char* argv[])
 
    if ( read_dims_from_hdf5(
          inFile_id,
+         datasetPath,
          dims,
          flags,
          mynode,
@@ -311,6 +315,7 @@ int main( int argc, char* argv[])
    if ( read_phi_from_hdf5( 
                         inFile_id,
                         phi_local, 
+                        datasetPath,
                         idx_start, 
                         idx_end,
                         flags,

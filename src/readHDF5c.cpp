@@ -13,6 +13,7 @@
 int SPF_NS::read_phi_from_hdf5( 
       const hid_t inFile_id,
       std::vector<double>& phi, 
+      const std::string datasetPath,
       const std::vector<size_t>& idx_start, 
       const std::vector<size_t>& idx_end,
       //const std::vector<int>& periodicity,
@@ -27,7 +28,7 @@ int SPF_NS::read_phi_from_hdf5(
    herr_t status; status = 0;
    hssize_t N_total;
    // open the hdf5 file
-   phi_dataset_id = H5Dopen2(inFile_id, "/phi", H5P_DEFAULT);
+   phi_dataset_id = H5Dopen( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
    phi_dataspace_id = H5Dget_space( phi_dataset_id );
 
    // reacquire spatial dimensions from the input data
@@ -264,6 +265,7 @@ int SPF_NS::determine_local_idxs(
 
 int SPF_NS::read_dims_from_hdf5( 
          const hid_t inFile_id,
+         const std::string datasetPath,
          std::vector<hsize_t>& dims,
          int_flags& flags,
          const int& mynode,
@@ -275,7 +277,7 @@ int SPF_NS::read_dims_from_hdf5(
    // resizes dims and sets dims[i] = # elements in i^{th} dimension
    // assumes all field data have same dimensions
    hid_t phi_dataset_id, phi_dataspace_id;
-   phi_dataset_id = H5Dopen2( inFile_id, "/phi", H5P_DEFAULT);
+   phi_dataset_id = H5Dopen2( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
    if ( phi_dataset_id < 0 ) flags.fail = -1;
    if ( check_for_failure( flags, comm ) == true )
    {

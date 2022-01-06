@@ -18,6 +18,7 @@ int SPF_NS::read_cmdline_options(
       string& input_field_name
       )
 {
+   string datasetPath = "/phi";
    return read_cmdline_options(
          args,
          dt,
@@ -26,6 +27,31 @@ int SPF_NS::read_cmdline_options(
          flags,
          output_prefix,
          input_field_name,
+         datasetPath,
+         0, 0,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      string& datasetPath
+      )
+{
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         write_period,
+         flags,
+         output_prefix,
+         input_field_name,
+         datasetPath,
          0, 0,
          MPI_COMM_WORLD);
 }
@@ -44,6 +70,7 @@ int SPF_NS::read_cmdline_options(
       )
 {
    int Nv; Nv = 1;
+   string datasetPath = "/phi";
    return read_cmdline_options(
          args,
          dt,
@@ -53,6 +80,36 @@ int SPF_NS::read_cmdline_options(
          flags,
          output_prefix,
          input_field_name,
+         datasetPath,
+         0, 0,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      string& datasetPath,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
+   int Nv; Nv = 1;
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         Nv,
+         write_period,
+         flags,
+         output_prefix,
+         input_field_name,
+         datasetPath,
          0, 0,
          MPI_COMM_WORLD);
 }
@@ -66,6 +123,7 @@ int SPF_NS::read_cmdline_options(
       int_flags& flags,
       string& output_prefix,
       string& input_field_name,
+      string& datasetPath,
       const int& mynode,
       const int& rootnode,
       MPI_Comm comm
@@ -96,6 +154,52 @@ int SPF_NS::read_cmdline_options(
          flags,
          output_prefix,
          input_field_name,
+         datasetPath,
+         mynode, rootnode,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& Nv,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
+   // variables created just to satisfy the full function prototype
+   double hh_x;
+   double ww;
+   double shape_constant;
+   double mobility;
+   double kappa;
+   double c_alpha;
+   double c_beta;
+   string datasetPath = "/phi";
+
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         Nv,
+         hh_x,
+         ww,
+         shape_constant,
+         mobility,
+         kappa,
+         c_alpha,
+         c_beta,
+         write_period,
+         flags,
+         output_prefix,
+         input_field_name,
+         datasetPath,
          mynode, rootnode,
          MPI_COMM_WORLD);
 }
@@ -116,6 +220,51 @@ int SPF_NS::read_cmdline_options(
       int_flags& flags,
       string& output_prefix,
       string& input_field_name,
+      const int& mynode,
+      const int& rootnode,
+      MPI_Comm comm
+      )
+{
+   string datasetPath = "/phi";
+
+   return read_cmdline_options(
+         args,
+         dt,
+         Nt,
+         Nv,
+         hh_x,
+         ww,
+         shape_constant,
+         mobility,
+         kappa,
+         c_alpha,
+         c_beta,
+         write_period,
+         flags,
+         output_prefix,
+         input_field_name,
+         datasetPath,
+         mynode, rootnode,
+         MPI_COMM_WORLD);
+}
+
+int SPF_NS::read_cmdline_options(
+      const std::vector<string>& args,
+      double& dt,
+      int& Nt,
+      int& Nv,
+      double& hh_x,
+      double& ww,
+      double& shape_constant,
+      double& mobility,
+      double& kappa,
+      double& c_alpha,
+      double& c_beta,
+      int& write_period,
+      int_flags& flags,
+      string& output_prefix,
+      string& input_field_name,
+      string& datasetPath,
       const int& mynode,
       const int& rootnode,
       MPI_Comm comm
@@ -149,6 +298,7 @@ int SPF_NS::read_cmdline_options(
                      write_period,
                      output_prefix,
                      input_field_name,
+                     datasetPath,
                      mynode,
                      rootnode,
                      comm
@@ -189,6 +339,15 @@ int SPF_NS::read_cmdline_options(
          {
             input_field_name = string( args[idx + 1] );
             flags.input_field = 1;  // true
+            idx += 1;
+         }
+      }
+      else if ( args[idx] == "-datasetPath" )
+      {
+         if ( idx + 1 < args.size()) 
+         {
+            datasetPath = string( args[idx + 1] );
+            flags.datasetPath = 1;  // true
             idx += 1;
          }
       }

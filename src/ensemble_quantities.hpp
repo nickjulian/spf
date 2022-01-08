@@ -18,40 +18,20 @@
 
     See the README file in the top-level SPF directory.
 ---------------------------------------------------------------------- */
-// File: writeNetCDF.cpp
+// File: ensemble_quantities.hpp
 
-#ifndef RANDROTATION_CPP
-#define RANDROTATION_CPP
+#ifndef ENSEMBLE_QUANTITIES_HPP
+#define ENSEMBLE_QUANTITIES_HPP
 
-#include "randRotation.hpp"
+#include <math.h>    // log
+//#include <cstdlib>   // EXIT_SUCCESS & EXIT_FAILURE
 
-
-
-int TEM_NS::random::rotation( double& omega, 
-                           double& xx, double& yy, double& zz)
+namespace SPF_NS
 {
-   //std::random_device rd; // obtaines seed for the random number generator
-   //std::mt19937 generator(rd()); // mersenne_twister_engine seeded with rd
-   //std::uniform_real_distribution<double> uniform_angle(0.0, 2.0*PI);
-   //std::uniform_real_distribution<double> uniform_coord(-1.0, 1.0);
-
-   double x1, x2, sqrt_x1_x2;
-   omega = uniform_angle(generator);
-   x1 = uniform_coord(generator);
-   x2 = uniform_coord(generator);
-   
-   while ( x1*x1 + x2*x2 >= 1.0 )
-   {
-      x1 = uniform_coord(generator);
-      x2 = uniform_coord(generator);
-   }
-
-   sqrt_x1_x2 = sqrt(1.0 - x1*x1 - x2*x2);
-   xx = 2.0 * x1 * sqrt_x1_x2;
-   yy = 2.0 * x2 * sqrt_x1_x2;
-   zz = 1.0 - 2.0 * (x1*x1 + x2*x2);
-
-   return EXIT_SUCCESS;
+   int entropy_boltzmann( 
+                     const int& Nv,
+                     const int& population,
+                     double& entropy);  // output
 }
 
 #endif

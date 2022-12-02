@@ -26,11 +26,11 @@
 #include "readHDF5c.hpp"
 
 
-int SPF_NS::read_phi_from_hdf5( 
+int SPF_NS::read_dataset_from_hdf5(
       const hid_t inFile_id,
-      std::vector<double>& phi, 
+      std::vector<double>& data,
       const std::string datasetPath,
-      const std::vector<size_t>& idx_start, 
+      const std::vector<size_t>& idx_start,
       const std::vector<size_t>& idx_end,
       //const std::vector<int>& periodicity,
       int_flags& flags,
@@ -40,33 +40,34 @@ int SPF_NS::read_phi_from_hdf5(
       MPI_Comm comm
       )
 {
-   hid_t phi_dataset_id, phi_dataspace_id;
+   hid_t dataset_id, dataspace_id;
    herr_t status; status = 0;
    hssize_t N_total;
    // open the hdf5 file
-   phi_dataset_id = H5Dopen( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
-   phi_dataspace_id = H5Dget_space( phi_dataset_id );
+   dataset_id = H5Dopen( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
+   dataspace_id = H5Dget_space( dataset_id );
 
    // reacquire spatial dimensions from the input data
    int ndims;
-   ndims = H5Sget_simple_extent_ndims( phi_dataspace_id );
-   //if (ndims != phi.size())
+   ndims = H5Sget_simple_extent_ndims( dataspace_id );
+   //if (ndims != data.size())
    //{
    //   //failflag += -1;
    //   if ( mynode == rootnode )
    //   {
    //      cout << "Error, ndims changed between file accesses ..." << endl;
    //   }
-   //   H5Sclose( phi_dataspace_id );
-   //   H5Dclose( phi_dataset_id );
+   //   H5Sclose( dataspace_id );
+   //   H5Dclose( dataset_id );
    //   return EXIT_FAILURE;
    //}
    hsize_t dims[ndims];
-   H5Sget_simple_extent_dims( phi_dataspace_id, dims, NULL);
+   H5Sget_simple_extent_dims( dataspace_id, dims, NULL);
 
-   //cout << "node " << mynode << " initial phi values: "; // debug
-   //for (std::vector<double>::const_iterator itr=phi.begin(); // debug
-   //      itr != phi.end(); ++itr) // debug
+   //cout << "node " << mynode << " initial " << datasetPath  // debug
+   // << " values: "; // debug
+   //for (std::vector<double>::const_iterator itr=data.begin(); // debug
+   //      itr != data.end(); ++itr) // debug
    //{ // debug
    //   cout << *itr << ", "; // debug
    //} // debug
@@ -93,11 +94,11 @@ int SPF_NS::read_phi_from_hdf5(
    
    // resize the local data container to fit the input
    if ( ndims == 1 ) 
-      phi.resize( idx_end[0] - idx_start[0] +3 );
+      data.resize( idx_end[0] - idx_start[0] +3 );
    else if ( ndims == 2 ) 
-      phi.resize( (idx_end[0] - idx_start[0] +3) * dims[1] );
+      data.resize( (idx_end[0] - idx_start[0] +3) * dims[1] );
    else if ( ndims == 3 ) 
-      phi.resize( (idx_end[0] - idx_start[0] +3) * dims[1] * dims[2]);
+      data.resize( (idx_end[0] - idx_start[0] +3) * dims[1] * dims[2]);
    else
    {
       if ( mynode == rootnode )
@@ -109,11 +110,12 @@ int SPF_NS::read_phi_from_hdf5(
       return EXIT_FAILURE;
    }
 
-   //cout << "node " << mynode << " phi.size(): " << phi.size() << endl; // debug
-   //hid_t phi_memspace_subset_id;
-   //phi_memspace_subset_id = H5Screate_simple( ndims, dims, NULL);
+   //cout << "node " << mynode << " data.size(): " << data.size() // debug
+   // << endl; // debug
+   //hid_t data_memspace_subset_id;
+   //data_memspace_subset_id = H5Screate_simple( ndims, dims, NULL);
    status = H5Sselect_hyperslab( 
-                                 phi_dataspace_id,
+                                 dataspace_id,
                                  H5S_SELECT_SET, // H5S_seloper_t op
                                  offset, // const hsize_t *start,
                                  stride, // const hsize_t *stride,
@@ -123,10 +125,11 @@ int SPF_NS::read_phi_from_hdf5(
    if ( status < 0 )
    {
       cout << "error: node " << mynode 
-         << " failed to read phi from input file "//<< inputFileName
-         << endl; // assumed to be executed only on one node
-      H5Sclose( phi_dataspace_id );
-      H5Dclose( phi_dataset_id );
+         << " failed to read " << datasetPath << " from input file "
+         //<< inputFileName
+         << endl; // TODO: send and write the error from only root node
+      H5Sclose( dataspace_id );
+      H5Dclose( dataset_id );
       return EXIT_FAILURE;
    }
 
@@ -141,10 +144,10 @@ int SPF_NS::read_phi_from_hdf5(
 
    std::vector<double> input_buffer(total_number_of_elements,0);
    status = H5Dread(
-         phi_dataset_id, // dataset_id,
+         dataset_id, // dataset_id,
          H5T_NATIVE_DOUBLE, // mem_type_id
          H5S_ALL, // mem_space_id
-         phi_dataspace_id, // file_space_id
+         dataspace_id, // file_space_id
          H5P_DEFAULT, // xfer_plist_id
          &input_buffer[0] // void* buf
          );
@@ -156,16 +159,16 @@ int SPF_NS::read_phi_from_hdf5(
    //} // debug
    //cout << endl; // debug
 
-   // copy from the read buffer to phi
+   // copy from the read buffer to data variable
    for ( size_t ii=0; ii < idx_end[0] - idx_start[0] + 1; ++ii)
    {
       
       if ( ndims == 1)
-         phi[ 1 + ii ] = input_buffer[idx_start[0] + ii];
+         data[ 1 + ii ] = input_buffer[idx_start[0] + ii];
       if ( ndims == 2)
       {
          for ( size_t jj=0; jj < dims[1]; ++jj)
-            phi[ jj + dims[1]*(dims[1] + ii)] 
+            data[ jj + dims[1]*(dims[1] + ii)] 
                = input_buffer[jj + dims[1]*(idx_start[0] + ii)];
       }
       if ( ndims == 3)
@@ -179,11 +182,11 @@ int SPF_NS::read_phi_from_hdf5(
             //input_buffer[
             //kk + dims[2]*(jj + dims[1]*(idx_start[0] + ii))
             //] // debug
-            //<< ", to phi[" <<  // debug
+            //<< ", to data[" <<  // debug
             //kk + dims[2]*(jj + dims[1]*(1 + ii))  // debug
             //<< "]" << endl; // debug
 
-               phi[ 
+               data[ 
                   kk + dims[2]*(jj + dims[1]*(1 + ii)) 
                ]
                   = input_buffer[
@@ -196,19 +199,20 @@ int SPF_NS::read_phi_from_hdf5(
    if ( status < 0 )
    {
       cout << "error: node " << mynode 
-         << " failed to read phi from input file "//<< inputFileName
+         << " failed to read " << datasetPath << " from input file "
+         //<< inputFileName
          << endl; 
-      H5Sclose( phi_dataspace_id );
-      H5Dclose( phi_dataset_id );
+      H5Sclose( dataspace_id );
+      H5Dclose( dataset_id );
       return EXIT_FAILURE;
    }
 
-   H5Sclose( phi_dataspace_id );
-   H5Dclose( phi_dataset_id );
+   H5Sclose( dataspace_id );
+   H5Dclose( dataset_id );
 
-   //cout << "node " << mynode << " phi values after reading: "; // debug
-   //for (std::vector<double>::const_iterator itr=phi.begin(); // debug
-   //      itr != phi.end(); ++itr) // debug
+   //cout << "node " << mynode << " data values after reading: "; // debug
+   //for (std::vector<double>::const_iterator itr=data.begin(); // debug
+   //      itr != data.end(); ++itr) // debug
    //{ // debug
    //   cout << *itr << ", "; // debug
    //} // debug
@@ -292,46 +296,48 @@ int SPF_NS::read_dims_from_hdf5(
 {
    // resizes dims and sets dims[i] = # elements in i^{th} dimension
    // assumes all field data have same dimensions
-   hid_t phi_dataset_id, phi_dataspace_id;
-   phi_dataset_id = H5Dopen2( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
-   if ( phi_dataset_id < 0 ) flags.fail = -1;
+   hid_t dataset_id, dataspace_id;
+   dataset_id = H5Dopen2( inFile_id, datasetPath.c_str(), H5P_DEFAULT);
+   if ( dataset_id < 0 ) flags.fail = -1;
    if ( check_for_failure( flags, comm ) == true )
    {
       cout << "node " << mynode // debug 
-         << " could not read '/phi' dataset" // debug
+         << " could not read " << datasetPath << " dataset" // debug
          << endl; // debug
-      H5Dclose( phi_dataset_id );
+      H5Dclose( dataset_id );
       return EXIT_FAILURE;
    }
-   phi_dataspace_id = H5Dget_space( phi_dataset_id );
-   if ( phi_dataspace_id < 0 ) flags.fail = -1;
+   dataspace_id = H5Dget_space( dataset_id );
+   if ( dataspace_id < 0 ) flags.fail = -1;
    if ( check_for_failure( flags, comm ) != 0)
    {
       cout << "node " << mynode  // debug
-         << " could not read '/phi' dataspace" // debug
+         << " could not read " << datasetPath << " dataspace" // debug
          << endl; // debug
-      H5Sclose( phi_dataspace_id );
-      H5Dclose( phi_dataset_id );
+      H5Sclose( dataspace_id );
+      H5Dclose( dataset_id );
       return EXIT_FAILURE;
    }
 
    int ndims, ndims2;
-   ndims = H5Sget_simple_extent_ndims( phi_dataspace_id );
+   ndims = H5Sget_simple_extent_ndims( dataspace_id );
    dims.resize(3, 1);
    hsize_t h5dims[ndims];
-   ndims2 = H5Sget_simple_extent_dims( phi_dataspace_id, h5dims, NULL);
+   ndims2 = H5Sget_simple_extent_dims( dataspace_id, h5dims, NULL);
    if ( ndims2 < 1 || ndims2 > 3 ) flags.fail = -1;
    if ( check_for_failure( flags, comm ) == true )
    {
       cout << "node " << mynode  // debug
-         << " could not read dimensions of phi_dataspace" // debug
+         << " could not read dimensions of " << datasetPath // debug
+         << " dataspace" // debug
          << endl; // debug
-      H5Sclose( phi_dataspace_id );
-      H5Dclose( phi_dataset_id );
+      H5Sclose( dataspace_id );
+      H5Dclose( dataset_id );
       return EXIT_FAILURE;
    }
    
-   //if (mynode == rootnode ) cout << "dimensions of phi: "; // debug
+   //if (mynode == rootnode ) cout << "dimensions of " // debug 
+   // << datasetPath << ": "; // debug
    for (size_t ii=0; ii < ndims2; ++ii)
    {
       dims[ii] = h5dims[ii];
@@ -339,33 +345,34 @@ int SPF_NS::read_dims_from_hdf5(
    }
    if (mynode == rootnode) cout << endl; // debug
 
-   H5Sclose( phi_dataspace_id );
-   H5Dclose( phi_dataset_id );
+   H5Sclose( dataspace_id );
+   H5Dclose( dataset_id );
    return EXIT_SUCCESS;
 }
 
-int SPF_NS::read_phi_from_hdf5_singlenode( 
+int SPF_NS::read_dataset_from_hdf5_singlenode( 
       const hid_t inFile_id,
       const string& group_name,
+      const string& datasetPath,
       int& Nx, int& Ny, int& Nz,
-      std::vector<double>& phi
+      std::vector<double>& data
       //const std::vector<int>& periodicity,
       )
 {
-   hid_t phi_dataset_id, phi_dataspace_id, group_id;
+   hid_t dataset_id, dataspace_id, group_id;
    herr_t status; status = 0;
    hssize_t N_total;
    // open the hdf5 file
    group_id = H5Gopen2(inFile_id, group_name.c_str(), H5P_DEFAULT);
-   phi_dataset_id = H5Dopen2(group_id, "phi", H5P_DEFAULT);
-   phi_dataspace_id = H5Dget_space( phi_dataset_id );
+   dataset_id = H5Dopen2(group_id, datasetPath.c_str(), H5P_DEFAULT);
+   dataspace_id = H5Dget_space( dataset_id );
 
    // reacquire spatial dimensions from the input data
    int ndims;
-   ndims = H5Sget_simple_extent_ndims( phi_dataspace_id );
+   ndims = H5Sget_simple_extent_ndims( dataspace_id );
 
    hsize_t dims[ndims];
-   H5Sget_simple_extent_dims( phi_dataspace_id, dims, NULL);
+   H5Sget_simple_extent_dims( dataspace_id, dims, NULL);
 
    hsize_t stride[ndims];
    for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
@@ -385,26 +392,26 @@ int SPF_NS::read_phi_from_hdf5_singlenode(
       total_number_of_elements = dims[0] * dims[1] * dims[2];
 
    // resize the local data container to fit the input
-   if ( phi.size() != total_number_of_elements )
+   if ( data.size() != total_number_of_elements )
    {
-      cout << "resizing phi since phi.size() " << phi.size();
+      cout << "resizing data since data.size() " << data.size();
       if (ndims == 3)
       {
          Nx = dims[0];
          Ny = dims[1];
          Nz = dims[2];
-         cout << phi.size() << " != dims[0]*dims[1]*dims[2] ";
+         cout << data.size() << " != dims[0]*dims[1]*dims[2] ";
       } 
       else if (ndims == 2) 
       { 
-         cout << phi.size() << " != dims[0]*dims[1] ";
+         cout << data.size() << " != dims[0]*dims[1] ";
          Nx = dims[0];
          Ny = dims[1];
          Nz = 1;
       }
       else if (ndims == 1)
       {
-         cout << phi.size() << " != dims[0] ";
+         cout << data.size() << " != dims[0] ";
          Nx = dims[0];
          Ny = 1;
          Nz = 1;
@@ -412,40 +419,41 @@ int SPF_NS::read_phi_from_hdf5_singlenode(
       else
       {
          cout << "Error: ndims not among {1,2,3}" << endl;
-         H5Sclose( phi_dataspace_id );
-         H5Dclose( phi_dataset_id );
+         H5Sclose( dataspace_id );
+         H5Dclose( dataset_id );
          H5Gclose( group_id );
          return EXIT_FAILURE;
       }
       cout << total_number_of_elements << endl;
    }
 
-   phi.resize( total_number_of_elements );
+   data.resize( total_number_of_elements );
 
    //std::vector<double> input_buffer(total_number_of_elements,0);
    status = H5Dread(
-         phi_dataset_id, // dataset_id,
+         dataset_id, // dataset_id,
          H5T_NATIVE_DOUBLE, // mem_type_id
          H5S_ALL, // mem_space_id
-         phi_dataspace_id, // file_space_id
+         dataspace_id, // file_space_id
          H5P_DEFAULT, // xfer_plist_id
-         &phi[0] // void* buf
+         &data[0] // void* buf
          //&input_buffer[0] // void* buf
          );
 
    if ( status < 0 )
    {
       cout << "error: " 
-         << " failed to read phi from input file "//<< inputFileName
+         << " failed to read " << datasetPath << "from input file "
+         //<< inputFileName
          << endl; 
-      H5Sclose( phi_dataspace_id );
-      H5Dclose( phi_dataset_id );
+      H5Sclose( dataspace_id );
+      H5Dclose( dataset_id );
       H5Gclose( group_id );
       return EXIT_FAILURE;
    }
 
-   H5Sclose( phi_dataspace_id );
-   H5Dclose( phi_dataset_id );
+   H5Sclose( dataspace_id );
+   H5Dclose( dataset_id );
    H5Gclose( group_id );
 
    return EXIT_SUCCESS;

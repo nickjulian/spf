@@ -327,7 +327,7 @@ int main( int argc, char* argv[])
 
    }
 
-   if ( read_phi_from_hdf5( 
+   if ( read_dataset_from_hdf5( 
                         inFile_id,
                         phi_local, 
                         datasetPath,

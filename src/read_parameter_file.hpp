@@ -102,6 +102,66 @@ namespace SPF_NS
          MPI_Comm comm
          );
 
+   int read_parameter_file(
+         const string& parameter_filename,
+         int_flags& flags,
+         double& dt,
+         int& Nt,
+         int& Nv,
+         double& hh_x,
+         double& ww,
+         double& shape_constant,
+         double& mobility,
+         double& kappa,
+         double& c_alpha,
+         double& c_beta,
+         int& write_period,
+         string& output_prefix,
+         string& input_field_file_name,
+         string& datasetPath,
+         string& datasetPathPhi,
+         string& datasetPathT,
+         string& datasetPathConc,
+         const int& mynode,
+         const int& rootnode,
+         MPI_Comm comm
+         );
+
+   int read_parameter_file(
+         const string& parameter_filename,
+         int_flags& flags,
+         double& dt,
+         int& Nt,
+         int& Nv,
+         double& hh_x,
+         double& c1,
+         double& c2,
+         double& c3,
+         double& c4,
+         double& c5,
+         double& c6,
+         double& cPrefactor,
+         double& alpha,
+         double& T0,
+         double& cbase,
+         double& LL,
+         double& orderEnergy,
+         double& D_T,
+         double& M_phi,
+         double& M_conc,
+         std::vector<double>& fieldValueLimits,
+         int& write_period,
+         string& output_prefix,
+         string& input_field_file_name,
+         string& datasetPath,
+         string& datasetPathPhi,
+         string& datasetPathT,
+         string& datasetPathConc,
+         const int& mynode,
+         const int& rootnode,
+         MPI_Comm comm
+         );
+
    int read_state_file_list(
          const std::string& list_file_name,
          std::vector<std::string>& state_file_names

@@ -35,6 +35,9 @@ struct int_flags
    unsigned int Nv;
    unsigned int wp;
    unsigned int datasetPath;
+   unsigned int datasetPathPhi;
+   unsigned int datasetPathT;
+   unsigned int datasetPathConc;
    unsigned int output_prefix;
    unsigned int input_field;
    unsigned int calcstat;
@@ -54,6 +57,10 @@ struct int_flags
       parameter_file = 0;
       debug = 0;
       fail = 0;
+      datasetPath = 0;
+      datasetPathPhi = 0;
+      datasetPathT = 0;
+      datasetPathConc = 0;
    }
 };
 } // SPF_NS

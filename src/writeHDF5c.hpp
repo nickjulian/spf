@@ -59,6 +59,25 @@ namespace SPF_NS
          MPI_Comm comm
          );
 
+   int append_fields_to_hdf5_multinode( 
+         // append a timestamped state to an hdf5 file
+         const hid_t outFile_id,
+         const int& time_step,
+         const double& time,
+         const std::vector<double>& phi,
+         const std::vector<double>& T,
+         const std::vector<double>& conc,
+         const int& Nx_local,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
+         const hid_t dx_plist_id,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         MPI_Comm comm
+         );
+
    int write_phi_to_hdf5_multinode( 
          // write a single state to the entire '/phi' dataset
          const hid_t outFile_id,

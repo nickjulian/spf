@@ -7,8 +7,8 @@ CXXFLAGS = -g -I$(ROOT)/include #-std=c++11
 #LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/ -lnetcdf_c++
 #HLIBS		= -L/home/user/xfer-software/hdf5/hdf5-1.10.5/lib -lhdf5
 LIBS		= -lhdf5 -L$(ROOT)/lib -lm -lz -lsz -lmpi -ldl -L/usr/lib64 #$(HLIBS)
-OBJS		= read_cmdline.o readHDF5c.o writeHDF5c.o check_for_failure.o spf_communication.o voxel_dynamics.o read_parameter_file.o rand1D.o jumps.o rungekutta.o stochastic_rates.o #ensemble_quantities.o
-SRCS		= ../src/read_cmdline.cpp ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp ../src/spf_communication.cpp ../src/voxel_dynamics.cpp ../src/read_parameter_file.cpp ../src/rand1D.cpp ../src/jumps.cpp ../src/rungekutta.cpp ../src/stochastic_rates.cpp #../src/ensemble_quantities.cpp
+OBJS		= read_cmdline.o readHDF5c.o writeHDF5c.o check_for_failure.o spf_communication.o voxel_dynamics.o read_parameter_file.o rand1D.o jumps.o rungekutta.o stochastic_rates.o free_energy_gl.o #ensemble_quantities.o
+SRCS		= ../src/read_cmdline.cpp ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp ../src/spf_communication.cpp ../src/voxel_dynamics.cpp ../src/read_parameter_file.cpp ../src/rand1D.cpp ../src/jumps.cpp ../src/rungekutta.cpp ../src/stochastic_rates.cpp ../src/free_energy_gl.cpp #../src/ensemble_quantities.cpp
 #HSRCS		= ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp
 TARGET	= $(ROOT)/bin/test.x
 
@@ -68,6 +68,10 @@ spf-gaussian-double-well-ito: $(OBJS)
 
 spf-srscd-3d: $(OBJS)
 	$(CXX) $(ROOT)/src/spf_srscd_3d.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_srscd_3d.x
+
+
+gl: $(OBJS)
+	$(CXX) $(ROOT)/src/spf_ginzberg_landau_3d.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_ginzberg_landau_3d.x
 
 stats: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/statsHDF5.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_stats.x

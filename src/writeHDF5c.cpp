@@ -30,7 +30,7 @@ int SPF_NS::append_phi_to_hdf5_multinode(
          const hid_t outFile_id,
          const int& time_step,
          const double& time,
-         const std::vector<double>& phi, 
+         const std::vector<double>& phi,
          const int& Nx_local,
          const std::vector<hsize_t>& dims, // assume dims.size() == 3
          const std::vector<size_t>& idx_start, 
@@ -271,6 +271,507 @@ int SPF_NS::append_phi_to_hdf5_multinode(
    H5Sclose( memspace_id );
    H5Sclose( dataspace_id );
    H5Dclose( dataset_id );
+   H5Gclose( group_id );
+   return EXIT_SUCCESS;
+}
+
+int SPF_NS::append_fields_to_hdf5_multinode( 
+         // append a timestamped state to an hdf5 file
+         const hid_t outFile_id,
+         const int& time_step,
+         const double& time,
+         const std::vector<double>& phi,
+         const std::vector<double>& T,
+         const std::vector<double>& conc,
+         const int& Nx_local,
+         const std::vector<hsize_t>& dims, // assume dims.size() == 3
+         const std::vector<size_t>& idx_start, 
+         const std::vector<size_t>& idx_end,
+         const hid_t dx_plist_id,
+         const int& mynode,
+         const int& rootnode,
+         const int& totalnodes,
+         MPI_Comm comm
+         )
+{
+   int failflag; failflag = 0;
+   herr_t status; status = 0;
+   hid_t file_space_id, datasetPhi_id, dataspacePhi_id, memspacePhi_id,
+         datasetT_id, dataspaceT_id, memspaceT_id,
+         datasetConc_id, dataspaceConc_id, memspaceConc_id,
+         group_id;
+   hid_t attribute_id, attribute_dataspace_id;
+
+   //std::vector<double> output_buffer( Nx_local * dims[1] * dims[2], 0 );
+   int ndims; ndims = 3;//dims.size();
+   hsize_t offset[3];
+   hsize_t offset_local[3];
+   hsize_t count[3];
+   //hsize_t h5dims[3];
+   hsize_t dims_local[3];
+   //for ( size_t ii=0; ii < ndims; ++ii) h5dims[ii] = dims[ii];
+   dims_local[0] = Nx_local + 2;
+   for ( size_t ii=1; ii < ndims; ++ii) dims_local[ii] = dims[ii];
+
+   std::string groupName("Step");
+   //std::string groupName("timestep");
+   std::string datasetNamePhi, datasetNameT, datasetNameConc;
+   std::string attributeName( "Time" );
+   hsize_t attribute_dims[1]; attribute_dims[0] = 1;
+   
+   // convert time_step from into to string
+   std::ostringstream sstime_step;
+   sstime_step << time_step;
+   groupName = "Step" + sstime_step.str();
+
+   datasetNamePhi = "/" + groupName + "/phi";
+   datasetNameT = "/" + groupName + "/T";
+   datasetNameConc = "/" + groupName + "/conc";
+   
+   group_id = H5Gcreate2( outFile_id,
+                        groupName.c_str(),
+                        H5P_DEFAULT, // hid_t link creation pl_id  
+                        H5P_DEFAULT, // hid_t group creation pl_id 
+                        H5P_DEFAULT  // hid_t group access pl_id
+                           );
+   if ( group_id < 0 ) 
+   {
+      cout << "Error, node " << mynode 
+            << " failed to create group " 
+            << groupName
+            << endl;
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create time dataspace
+   attribute_dataspace_id = H5Screate_simple( 1, attribute_dims, NULL);
+   if ( attribute_dataspace_id < 0 ) 
+   {
+      cout << "Error, node " << mynode 
+            << " failed to create attribute dataspace for " 
+            << attributeName << " in group "
+            << groupName
+            << endl;
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create time attribute
+   attribute_id = H5Acreate2(
+                           group_id,
+                           attributeName.c_str(),
+                           H5T_NATIVE_DOUBLE,
+                           attribute_dataspace_id,
+                           H5P_DEFAULT,
+                           H5P_DEFAULT 
+                           );
+   if ( attribute_id < 0 ) 
+   {
+      cout << "Error, node " << mynode 
+            << " failed to create attribute " 
+            << attributeName << " in group "
+            << groupName
+            << endl;
+      H5Aclose( attribute_id );
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // write time attribute to file
+   status = H5Awrite( 
+                     attribute_id,
+                     H5T_NATIVE_DOUBLE,
+                     &time
+                     );
+   if ( status < 0 ) 
+   {
+      cout << "Error, node " << mynode 
+            << " failed to write time attribute to group: "
+            << groupName
+            << endl;
+      H5Aclose( attribute_id );
+      H5Sclose( attribute_dataspace_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   H5Aclose( attribute_id );
+   H5Sclose( attribute_dataspace_id );
+
+   // calculate offset and count
+   offset_local[0] = 1; offset_local[1] = 0; offset_local[2] = 0;
+   for ( size_t ii=0; ii < ndims; ++ii ) 
+   {
+      offset[ii] = idx_start[ii];
+   }
+
+   count[0] = Nx_local;
+   count[1] = dims_local[1];
+   count[2] = dims_local[2];
+
+   //hsize_t stride[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii ) stride[ii] = 1;
+   //hsize_t block[ndims];
+   //for ( size_t ii=0; ii < ndims; ++ii) block[ii] = 1;
+
+   //cout << "node " << mynode << " offset_local: "; // debug
+   //for (size_t ii=0; ii < 3 ; ++ii) // debug
+   //   cout << offset_local[ii] << " "; // debug
+   //cout << endl; // debug
+   //cout << "node " << mynode << " count: "; // debug
+   //for (size_t ii=0; ii < 3 ; ++ii) // debug
+   //   cout << count[ii] << " "; // debug
+   //cout << endl; // debug
+
+   // create local memory dataspace
+   memspacePhi_id = H5Screate_simple( ndims, dims_local, NULL );
+   if ( memspacePhi_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create memspacePhi_id"  << endl;
+      H5Sclose( memspacePhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create file dataspace
+   dataspacePhi_id = H5Screate_simple( ndims, &dims[0], NULL );
+   if ( dataspacePhi_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create dataspacePhi_id" << endl;
+      H5Sclose( memspacePhi_id );
+      H5Sclose( dataspacePhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create dataset
+   datasetPhi_id = H5Dcreate2(
+                           outFile_id, 
+                           datasetNamePhi.c_str(), //"/phi", 
+                           H5T_NATIVE_DOUBLE, 
+                           dataspacePhi_id,
+                           H5P_DEFAULT, // link creation property list
+                           H5P_DEFAULT, // dataset creation property list
+                           H5P_DEFAULT // dataset access property list
+                           );
+   if ( datasetPhi_id < 0 ) 
+   {
+         cout << "Error, node " << mynode 
+            << " failed to create datasetPhi_id from dataspacePhi_id " 
+            << endl;
+      H5Sclose( memspacePhi_id );
+      H5Sclose( dataspacePhi_id );
+      H5Dclose( datasetPhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // select hyperslab in memory
+   status = H5Sselect_hyperslab( 
+                                 memspacePhi_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset_local, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from memspacePhi_id"
+         << endl;
+      H5Sclose( memspacePhi_id );
+      H5Sclose( dataspacePhi_id );
+      H5Dclose( datasetPhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // select hyperslab in file
+   status = H5Sselect_hyperslab( 
+                                 dataspacePhi_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from dataspacePhi_id"
+         << endl;
+      H5Sclose( memspacePhi_id );
+      H5Sclose( dataspacePhi_id );
+      H5Dclose( datasetPhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // write phi memory hyperslab to file hyperslab
+   status = H5Dwrite(
+         datasetPhi_id, // dataset_id
+         H5T_NATIVE_DOUBLE, // mem_type_id
+         memspacePhi_id, // H5S_ALL, // mem_space_id
+         dataspacePhi_id, // file_space_id
+         dx_plist_id, // xfer_plist_id,
+         //H5P_DEFAULT, // xfer_plist_id,
+         &phi[0] // buf
+         //&output_buffer[0] // buf
+         );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to write phi with memspace_id  dataspacePhi_id"
+         << endl;
+      H5Sclose( memspacePhi_id );
+      H5Sclose( dataspacePhi_id );
+      H5Dclose( datasetPhi_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // success in writing phi, so close its H5 data spaces and set
+   H5Sclose( memspacePhi_id );
+   H5Sclose( dataspacePhi_id );
+   H5Dclose( datasetPhi_id );
+
+   // create local memory dataspace
+   memspaceT_id = H5Screate_simple( ndims, dims_local, NULL );
+   if ( memspaceT_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create memspaceT_id"  << endl;
+      H5Sclose( memspaceT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // create file dataspace
+   dataspaceT_id = H5Screate_simple( ndims, &dims[0], NULL );
+   if ( dataspaceT_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create dataspaceT_id" << endl;
+      H5Sclose( memspaceT_id );
+      H5Sclose( dataspaceT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create dataset
+   datasetT_id = H5Dcreate2(
+                           outFile_id, 
+                           datasetNameT.c_str(),
+                           H5T_NATIVE_DOUBLE, 
+                           dataspaceT_id, 
+                           H5P_DEFAULT, // link creation property list
+                           H5P_DEFAULT, // dataset creation property list
+                           H5P_DEFAULT // dataset access property list
+                           );
+   if ( datasetT_id < 0 ) 
+   {
+         cout << "Error, node " << mynode 
+            << " failed to create datasetT_id from dataspaceT_id " 
+            << endl;
+      H5Sclose( memspaceT_id );
+      H5Sclose( dataspaceT_id );
+      H5Dclose( datasetT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // select hyperslab in memory
+   status = H5Sselect_hyperslab( 
+                                 memspaceT_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset_local, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from memspaceT_id"
+         << endl;
+      H5Sclose( memspaceT_id );
+      H5Sclose( dataspaceT_id );
+      H5Dclose( datasetT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // select hyperslab in file
+   status = H5Sselect_hyperslab( 
+                                 dataspaceT_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from dataspaceT_id"
+         << endl;
+      H5Sclose( memspaceT_id );
+      H5Sclose( dataspaceT_id );
+      H5Dclose( datasetT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // write T memory hyperslab to file hyperslab
+   status = H5Dwrite(
+         datasetT_id, // dataset_id
+         H5T_NATIVE_DOUBLE, // mem_type_id
+         memspaceT_id, // H5S_ALL, // mem_space_id
+         dataspaceT_id, // file_space_id
+         dx_plist_id, // xfer_plist_id,
+         //H5P_DEFAULT, // xfer_plist_id,
+         &T[0] // buf
+         //&output_buffer[0] // buf
+         );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to write T with memspaceT_id dataspaceT_id" << endl;
+      H5Sclose( memspaceT_id );
+      H5Sclose( dataspaceT_id );
+      H5Dclose( datasetT_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // success in writing T, so close its H5 data spaces and set
+   H5Sclose( memspaceT_id );
+   H5Sclose( dataspaceT_id );
+   H5Dclose( datasetT_id );
+
+   // create local memory dataspace
+   memspaceConc_id = H5Screate_simple( ndims, dims_local, NULL );
+   if ( memspaceConc_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create memspaceConc_id"  << endl;
+      H5Sclose( memspaceConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // create file dataspace
+   dataspaceConc_id = H5Screate_simple( ndims, &dims[0], NULL );
+   if ( dataspaceConc_id < 0 )
+   {
+      cout << "Error, node " << mynode 
+         << " failed to create dataspaceConc_id" << endl;
+      H5Sclose( memspaceConc_id );
+      H5Sclose( dataspaceConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // create dataset
+   datasetConc_id = H5Dcreate2(
+                           outFile_id, 
+                           datasetNameConc.c_str(),
+                           H5T_NATIVE_DOUBLE, 
+                           dataspaceConc_id, 
+                           H5P_DEFAULT, // link creation property list
+                           H5P_DEFAULT, // dataset creation property list
+                           H5P_DEFAULT // dataset access property list
+                           );
+   if ( datasetConc_id < 0 ) 
+   {
+         cout << "Error, node " << mynode 
+            << " failed to create datasetConc_id from dataspaceConc_id "
+            << endl;
+      H5Sclose( memspaceConc_id );
+      H5Sclose( dataspaceConc_id );
+      H5Dclose( datasetConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // select hyperslab in memory
+   status = H5Sselect_hyperslab( 
+                                 memspaceConc_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset_local, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from memspaceConc_id"
+         << endl;
+      H5Sclose( memspaceConc_id );
+      H5Sclose( dataspaceConc_id );
+      H5Dclose( datasetConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // select hyperslab in file
+   status = H5Sselect_hyperslab( 
+                                 dataspaceConc_id,
+                                 H5S_SELECT_SET, // H5S_seloper_t op
+                                 offset, // const hsize_t *start,
+                                 NULL, // identical to having stride == 1
+                                 //stride, // const hsize_t *stride,
+                                 count, // const hsize_t *count,
+                                 NULL // identical to having block==1
+                                 //block // const hsize_t *block,
+                                 );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to select hyperslab from dataspaceConc_id"
+         << endl;
+      H5Sclose( memspaceConc_id );
+      H5Sclose( dataspaceConc_id );
+      H5Sclose( datasetConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+   // write conc memory hyperslab to file hyperslab
+   status = H5Dwrite(
+         datasetConc_id, // dataset_id
+         H5T_NATIVE_DOUBLE, // mem_type_id
+         memspaceConc_id, // H5S_ALL, // mem_space_id
+         dataspaceConc_id, // file_space_id
+         dx_plist_id, // xfer_plist_id,
+         //H5P_DEFAULT, // xfer_plist_id,
+         &conc[0] // buf
+         //&output_buffer[0] // buf
+         );
+   if ( status < 0 ) 
+   {
+      cout << "Error node " << mynode 
+         << " failed to write conc with memspace_id dataspaceConc_id"
+         << endl;
+      H5Sclose( memspaceConc_id );
+      H5Sclose( dataspaceConc_id );
+      H5Dclose( datasetConc_id );
+      H5Gclose( group_id );
+      return EXIT_FAILURE;
+   }
+
+   // success in writing conc, so close its H5 data spaces and set
+   H5Sclose( memspaceConc_id );
+   H5Sclose( dataspaceConc_id );
+   H5Dclose( datasetConc_id );
+
    H5Gclose( group_id );
    return EXIT_SUCCESS;
 }

@@ -448,5 +448,13 @@ namespace SPF_NS
       const int& Ny,
       const int& Nz
       );
+
+
+   /*
+    * variables used by the code that calculates updates to a field:
+    * Nx_local Ny Nz neigh_idxs Nvoxel_neighbors conc_local conc_local_rates conc_local_flux conc_flux_from_above conc_flux_from_below conc_upper_limit conc_lower_limit conc_flux_downward conc_flux_upward conc_flux_upward_rates conc_flux_downward_rates Nv neigh_pairs ww shape_constant c_alpha c_beta kappa mobility rr dt eps flags halo_flux_send_requests halo_flux_recv_requests neighbors_comm neighbor_x_higher neighbor_x_lower conc_flux_from_below conc_flux_from_above conc_flux_from_below_rates conc_flux_from_above_rates halo_accepted_flux_send_requests halo_accepted_flux_recv_requests
+    *
+    */
+
 } // SPF_NS
 #endif

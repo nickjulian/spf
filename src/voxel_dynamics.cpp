@@ -334,7 +334,7 @@ int SPF_NS::enforce_bounds_generic(
                        //> (eps.dblsqrt* (phi_local[idx] - phi_lower_limit))
                      )
                   {
-                     std::cout << "Warning: reduced outward flux still greater than voxel contents. (outward_flux, phi_local[" << idx << "], phi_local[] - phi_lower_limit - outward_flux): (" << outward_flux << ", " << phi_local[idx] << ", " << phi_local[idx] - phi_lower_limit - outward_flux << ")" << std::endl;
+                     std::cout << "Warning: reduced outward flux still greater than voxel contents. (outward_flux, field_local[" << idx << "], field_local[] - field_lower_limit - outward_flux): (" << outward_flux << ", " << phi_local[idx] << ", " << phi_local[idx] - phi_lower_limit - outward_flux << ")" << std::endl;
                   }
                   // else phi_local[idx] =0 if <0 in parent function
                }
@@ -346,7 +346,7 @@ int SPF_NS::enforce_bounds_generic(
                        > 10*eps.dbl
                      )
                   {
-                     std::cout << "Warning: reduced inward flux + previous population still greater than voxel upper limit. (inward_flux, phi_local[" << idx << "], " << "inward_flux + phi_local[] - phi_upper_limit" << "): (" << inward_flux << ", " << phi_local[idx] << ", " << inward_flux + phi_local[idx] - phi_upper_limit << ")"
+                     std::cout << "Warning: reduced inward flux + previous population still greater than voxel upper limit. (inward_flux, field_local[" << idx << "], " << "inward_flux + field_local[] - field_upper_limit" << "): (" << inward_flux << ", " << phi_local[idx] << ", " << inward_flux + phi_local[idx] - phi_upper_limit << ")"
                         << std::endl;
                   }
                }
@@ -4330,7 +4330,7 @@ int SPF_NS::enforce_bounds_pairwise_int_inward(
 int SPF_NS::conserved_jump_flux_separate_distributions( 
             std::vector<double>& pairwise_flux, // 6* local_field size
             SPF_NS::random& rr,
-            const std::vector<double>& phi_local,  // integers
+            const std::vector<double>& field_local,  // integers
             const std::vector<double>& jump_rates, // 6* local_field size
             const double& dt,
             const size_t& Nvoxel_neighbors,
@@ -4354,9 +4354,9 @@ int SPF_NS::conserved_jump_flux_separate_distributions(
       {
          if(( jump_rates[nn + Nvoxel_neighbors * idx] > 0.0)
                &&
-             (phi_local[neigh_idxs[nn]] < phi_upper_limit )
+             (field_local[neigh_idxs[nn]] < phi_upper_limit )
                &&
-             (phi_local[idx] > phi_lower_limit))
+             (field_local[idx] > phi_lower_limit))
          {
             std::poisson_distribution<int> 
                pd( dt * jump_rates[nn + Nvoxel_neighbors*idx]);
@@ -4366,10 +4366,10 @@ int SPF_NS::conserved_jump_flux_separate_distributions(
             //   = round(pd( rr.generator));
 
             //if ( (pairwise_flux[nn + Nvoxel_neighbors*idx] 
-            //      + phi_local[neigh_idxs[nn]]) > phi_upper_limit)
+            //      + field_local[neigh_idxs[nn]]) > phi_upper_limit)
             //{
             //   pairwise_flux[nn + Nvoxel_neighbors*idx] 
-            //      = phi_upper_limit - phi_local[neigh_idxs[nn]];
+            //      = phi_upper_limit - field_local[neigh_idxs[nn]];
             //}   // this will be taken care of in enforce_bounds_int()
          }
          else
@@ -4953,7 +4953,7 @@ double SPF_NS::laplacian1d(
       )
 {
    return (1.0/(hh*hh))*
-            ( 
+            (
                local_field[neigh_idx_x_a]
                -2.0* local_field[idx]
                + local_field[neigh_idx_x_b]
@@ -4964,7 +4964,7 @@ double SPF_NS::laplacian3d(
          const double& hh_x,
          const double& hh_y,
          const double& hh_z,
-         const size_t& Nz,
+         const size_t& Nz, // to test if 2-D or 3-D
          const std::vector<double>& local_field,
          const size_t& idx,
          const size_t& neigh_idx_x_a,
@@ -4978,7 +4978,7 @@ double SPF_NS::laplacian3d(
    double ll; ll = 0.0;
    ll +=
      (1.0/(hh_x*hh_x))*
-     ( 
+     (
            //local_field[neigh_x_idx[0]]
            local_field[neigh_idx_x_a]
            -2.0* local_field[idx]

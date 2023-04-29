@@ -32,13 +32,14 @@
 #define ONESIXTH 0.16666666666666666666666666666666666666666666666666666667
 #endif
 
-int SPF_NS::marcusIntegral( double (*marcusIntegrand)(const double& tt,
+int SPF_NS::marcusIntegral(
+                      double (*marcusIntegrand)(const double& tt,
                                           const double& yy,
                                           const double& dP), 
                      const double& rk_dt,    // increment of unit interval
                      const double& y0,    // path.back()
                      const double& t0,    // t_n, t_{n+1}=t_n + dt
-                     const double& dP,// Y_{k} size of jump before marcus
+                     const double& dP,// Y_{k} size of noise jump
                      double& jumpDestination)
 {
    jumpDestination = y0;
@@ -52,24 +53,25 @@ int SPF_NS::marcusIntegral( double (*marcusIntegrand)(const double& tt,
    {
       jumpDestination = marcusRK4( marcusIntegrand,
                                     rk_dt,
-                                    jumpDestination,
-                                    tt,
+                                    jumpDestination, //accumulates over[0,1]
+                                    tt, // varies from 0 to 1
                                     dP);
    }
    return EXIT_SUCCESS;
 }
 
-double SPF_NS::marcusRK4( 
+double SPF_NS::marcusRK4( // returns y0 + contribution of integrand over dt
                      double (*integrand)(const double& tt, 
                                           const double& yy,
                                           const double& poissonJump),// Y_k
-                     const double& dt, 
-                     const double& y0, 
-                     const double& t0, 
-                     const double& jump)
+                     const double& dt, // constant rk_dt
+                     const double& y0, // will be reassigned the return value of this function
+                     const double& t0, // will vary from 0 to 1
+                     const double& jump) // will be constant while integrating t0 over [0,1]
 {
+   // Returns a contribution of the integral of integrand() over [t0,t0+dt] added to y0.
    double k1, k2, k3, k4; 
-   k1 = dt* integrand( t0, y0, jump);
+   k1 = dt* integrand( t0, y0, jump); // == y0*jump
    k2 = dt* integrand( t0 + 0.5*dt, y0 + 0.5*k1, jump);
    k3 = dt* integrand( t0 + 0.5*dt, y0 + 0.5*k2, jump);
    k4 = dt* integrand( t0 + dt, y0 + k3, jump);

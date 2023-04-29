@@ -19,11 +19,11 @@ TARGET	= $(ROOT)/bin/test.x
 #poisson: $(OBJS) $(HOBJS)
 #	$(CXX) $(ROOT)/src/test_poisson_process.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_poisson.x
 #
-#marcus: $(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_marcus.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus.x
+marcus: $(OBJS) $(HOBJS)
+	$(CXX) $(ROOT)/src/test_marcus.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus.x
 #
-#drift: $(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_marcus_drift.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus_drift.x
+drift: $(OBJS) $(HOBJS)
+	$(CXX) $(ROOT)/src/test_marcus_drift.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus_drift.x
 
 spf: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/spf_pure_gaussian_single.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_single.x
@@ -72,6 +72,12 @@ spf-srscd-3d: $(OBJS)
 
 gl: $(OBJS)
 	$(CXX) $(ROOT)/src/spf_ginzberg_landau_3d.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_ginzberg_landau_3d.x
+
+gl-deterministic: $(OBJS)
+	$(CXX) $(ROOT)/src/spf_ginzberg_landau_3d_deterministic.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_ginzberg_landau_3d_deterministic.x
+
+gl-marcus: $(OBJS)
+	$(CXX) $(ROOT)/src/spf_ginzberg_landau_3d_marcus.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_ginzberg_landau_3d_marcus.x
 
 stats: $(OBJS) #$(HOBJS)
 	$(CXX) $(ROOT)/src/statsHDF5.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_stats.x

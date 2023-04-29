@@ -27,12 +27,12 @@
 #include <vector>
 #include <iostream>  // cout, cin, cerr, endl
 #include <algorithm> // sort
-#include <math.h>    // sqrt
+#include <math.h>    // sqrt, round // maybe try <cmath>
 
 #include "rand.hpp"
 #include "flags.hpp"
-#include "macheps.hpp"  // determines the local machine's relative 
-                        //  rounding error 
+#include "macheps.hpp"  // determines the local machine's relative
+                        //  rounding error
 
 namespace SPF_NS
 {
@@ -187,7 +187,7 @@ namespace SPF_NS
          int_flags& flags
          );
 
-   //int conserved_gaussian_flux( 
+   //int conserved_gaussian_flux(
    //int conserved_gaussian_flux_single_distribution_stratonovich(
    //int conserved_gaussian_flux_separate_distributions(
    //int conserved_gaussian_flux_separate_distributions_stratonovich(
@@ -265,7 +265,7 @@ namespace SPF_NS
    //   const int& Nz
    //   );
 
-   //int conserved_jump_flux_single_distribution( 
+   //int conserved_jump_flux_single_distribution(
    //   std::vector<double>& local_change, // must be same size as local_field
    //   const std::vector<double>& local_field,
    //   SPF_NS::random& rr,
@@ -282,7 +282,18 @@ namespace SPF_NS
    //   const int& Ny,
    //   const int& Nz);
 
-   int conserved_jump_flux_separate_distributions( 
+   int conserved_jump_flux_deterministic(
+      std::vector<double>& pairwise_flux, //( 6 * local_field size )
+      const std::vector<double>& phi_local,  // integers
+      const std::vector<double>& jump_rates,  // 6 elements
+      const double& dt,
+      const size_t& Nvoxel_neighbors,
+      const std::vector<size_t>& neigh_idxs,
+      const double& phi_upper_limit,
+      const double& phi_lower_limit,
+      const size_t& idx);
+
+   int conserved_jump_flux_separate_distributions(
       std::vector<double>& pairwise_flux, //( 6 * local_field size )
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers
@@ -294,7 +305,7 @@ namespace SPF_NS
       const double& phi_lower_limit,
       const size_t& idx);
 
-   int conserved_jump_flux_pairwise_distributions( 
+   int conserved_jump_flux_pairwise_distributions(
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers
@@ -309,7 +320,7 @@ namespace SPF_NS
       //const size_t& idx
       );
 
-   int conserved_jump_flux_pairwise_drift_distributions( 
+   int conserved_jump_flux_pairwise_drift_distributions(
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers
@@ -324,7 +335,7 @@ namespace SPF_NS
       //const size_t& idx
       );
 
-   int conserved_gaussian_flux_separate_distributions( 
+   int conserved_gaussian_flux_separate_distributions(
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers
@@ -337,7 +348,7 @@ namespace SPF_NS
       const double& phi_lower_limit,
       const size_t& idx);
 
-   int conserved_gaussian_flux_pairwise_distributions( 
+   int conserved_gaussian_flux_pairwise_distributions(
       std::vector<double>& pairwise_flux, // 6* local_field size
       SPF_NS::random& rr,
       const std::vector<double>& phi_local,  // integers
@@ -350,7 +361,7 @@ namespace SPF_NS
       const double& phi_lower_limit,
       const size_t& idx);
 
-   //int conserved_gaussian_flux_separate_distributions( 
+   //int conserved_gaussian_flux_separate_distributions(
    //   std::vector<double>& local_change,// must be same size as local_field
    //   const std::vector<double>& local_field,
    //   SPF_NS::random& rr,
@@ -363,7 +374,7 @@ namespace SPF_NS
    //   const int& Ny,
    //   const int& Nz);
 
-   int conserved_gaussian_flux_separate_distributions_ito( 
+   int conserved_gaussian_flux_separate_distributions_ito(
       std::vector<double>& local_change,// must be same size as local_field
       const std::vector<double>& local_field,
       SPF_NS::random& rr,
@@ -402,7 +413,7 @@ namespace SPF_NS
          //const size_t* const neigh_z_idx
          );
 
-   int laplacian_flux( 
+   int laplacian_flux(
       std::vector<double>& local_change, // must be same size as local_field
       const std::vector<double>& local_field,
       const double& hh_x, const double& hh_y, const double& hh_z,
@@ -420,7 +431,7 @@ namespace SPF_NS
       const int& Ny, const int& Nz
       );
 
-   int flux_test( 
+   int flux_test(
       std::vector<double>& local_change,
       const std::vector<double>& local_field,
       const size_t& ii,
@@ -431,7 +442,7 @@ namespace SPF_NS
       const int& Nz
       );
 
-   int identify_local_neighbors( 
+   int identify_local_neighbors(
       size_t& neigh_idx_x_a,
       size_t& neigh_idx_x_b,
       size_t& neigh_idx_y_a,

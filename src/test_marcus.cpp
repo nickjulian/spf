@@ -34,7 +34,7 @@ using std::endl;
 using std::cerr;
 using std::setw;
 using namespace std;
-using namespace TEM_NS;
+using namespace SPF_NS;
 
 
 // integrand specific to this Langevin equation
@@ -89,7 +89,7 @@ int main( int argc, char* argv[])
    outFilePrefix = outFilePrefix + "_xdP" + ".h5";
 
    //TEM_NS::random rr( rate, dt);
-   TEM_NS::random rr;
+   SPF_NS::random rr;
 
    // a function pointer to pass the integrand to Runge-Kutta
    //double (*zz)(const double& tt, const double& yy, jump);
@@ -122,7 +122,7 @@ int main( int argc, char* argv[])
       //rr.displacement1D( jumpL, 1.0 );
       //rr.gaussiandisplacement1D( jumpL, 1.0 );
       rr.unitdisplacement1D( jumpL, 0.5, 0.5 );
-      //cout << "jumpL: " << jumpL << endl;//debug
+      cout << "jumpL: " << jumpL << endl;//debug
       // analytical response in Levy process
       jumpC = jumpDestination( jumpL, cc.back() ) - cc.back();
       cout << "jumpC: " << jumpC << endl;//debug
@@ -143,7 +143,8 @@ int main( int argc, char* argv[])
       cout << "jumpRK: " << jumpRK << endl;//debug
       cout << "rktest: " << rktest << endl << endl;//debug
       tt.push_back( tt.back() + wait_time );
-      cc.push_back( cc.back() + jumpC);
+      //cc.push_back( cc.back() + jumpC);
+      cc.push_back( cc.back() + jumpRK);
    }
 
    output_2vectors_to_hdf5( tt, cc, outFilePrefix);

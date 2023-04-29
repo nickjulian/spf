@@ -81,11 +81,12 @@ int main( int argc, char* argv[])
    double runTime = 2.0;
 
    // increments
-   double dt; dt = runTime/Npoints;//0.01;
+   double dt; dt = runTime/Npoints;//0.02;
    //double sqrtdt; sqrtdt = sqrt(dt);
 
    // rate of the compound poisson process
-   double rate; rate = 2.5*dt;// 0.01; 
+   double rate; rate = 10*dt;// 0.1; 
+   //double rate; rate = 2.5*dt;// 0.01; 
    double totalRate; totalRate = rate;
 
    // time and state
@@ -151,11 +152,11 @@ int main( int argc, char* argv[])
          {
             //cout << "t: " << *itr << endl;//debug
             // iterate over unit interval increments
-            jumpRK = marcusRK4( integrand, 
+            jumpRK = marcusRK4( integrand,  // function to integrate over [0,1]
                                  rk_dt, // time increment of unit interval
-                                 jumpRK,  // y_n for rk4 
-                                 *itr,    // t_n for rk4
-                                 jumpL);  // Y_k
+                                 jumpRK,  // y_n for rk4, initial value of integrand
+                                 *itr,    // varying from 0 to 1 inner loop
+                                 jumpL);  // Y_k // constant in inner loop
             //rktest = marcusRK4( integrand, rk_dt, rktest, *itr, 1.0);
             //cout << "rktest: " << rktest/rk_dt << endl;
          }

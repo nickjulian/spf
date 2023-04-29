@@ -30,7 +30,7 @@ using std::cerr;
 using std::endl;
 
 
-double TEM_NS::jumpDestination( const double& rr, const double& cc)
+double SPF_NS::jumpDestination( const double& rr, const double& cc)
 {
    return cc * exp(rr);
 }

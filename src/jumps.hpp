@@ -33,7 +33,7 @@
 #define KB 1.380649E-23
 #endif
 
-namespace TEM_NS
+namespace SPF_NS
 {
    double jumpDestination( const double& rr, const double& cc);
    //{

@@ -40,9 +40,9 @@ using std::cerr;
 
 namespace SPF_NS
 {
-   int read_phi_from_hdf5(
+   int read_dataset_from_hdf5(
          const hid_t inFile_id,
-         std::vector<double>& phi,
+         std::vector<double>& data,
          const std::string datasetPath,
          const std::vector<size_t>& idx_start, 
          const std::vector<size_t>& idx_end,
@@ -52,13 +52,6 @@ namespace SPF_NS
          const int& rootnode,
          const int& totalnodes,
          MPI_Comm comm
-         );
-
-   int read_phi_from_hdf5_singlenode( 
-         const hid_t inFile_id,
-         const string& group_name,
-         int& Nx, int& Ny, int& Nz,
-         std::vector<double>& phi
          );
 
    int read_dims_from_hdf5(// sets dims[i] = # elements in i^{th} dimension

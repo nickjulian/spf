@@ -1,6 +1,8 @@
 /* ----------------------------------------------------------------------
     SPF - Stochastic Phase Field
-    Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
+    Copyright (C) 2025 
+    Peng Geng <penggeng@g.ucla.edu>
+    Nicholas Huebner Julian <njulian@ucla.edu>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,13 +34,16 @@ struct int_flags
    // 0 == false;
    unsigned int dt;
    unsigned int Nt;
-   unsigned int Nv;
+   //unsigned int Nv;
    unsigned int wp;
    unsigned int datasetPath;
+   //unsigned int datasetPathPhi;
+   unsigned int datasetPathT;
+   //unsigned int datasetPathConc;
    unsigned int output_prefix;
    unsigned int input_field;
    unsigned int calcstat;
-   unsigned int parameter_file;
+   //unsigned int parameter_file;
    unsigned int debug;
    unsigned int fail;
 
@@ -46,14 +51,18 @@ struct int_flags
    {
       dt = 0;  // 0 == false
       Nt = 0;
-      Nv = 0;
+      //Nv = 0;
       wp = 0;
       output_prefix = 0;
       input_field = 0;
       calcstat = 0;
-      parameter_file = 0;
+      //parameter_file = 0;
       debug = 0;
       fail = 0;
+      datasetPath = 0;
+      //datasetPathPhi = 0;
+      datasetPathT = 0;
+      //datasetPathConc = 0;
    }
 };
 } // SPF_NS

@@ -30,7 +30,6 @@ int SPF_NS::flux_exchange_isend(
       const std::vector<double>& flux_upward_rates, // Ny*Nz
       const std::vector<double>& flux_downward, // Ny*Nz
       const std::vector<double>& flux_downward_rates, // Ny*Nz
-      //const int& Nx_local,
       const int& Ny,
       const int& Nz,
       const int& neighbor_x_higher,
@@ -71,7 +70,6 @@ int SPF_NS::flux_exchange_irecv(
       std::vector<double>& flux_from_above_rates, // Ny*Nz
       std::vector<double>& flux_from_below, // Ny*Nz
       std::vector<double>& flux_from_below_rates, // Ny*Nz
-      //const int& Nx_local,
       const int& Ny,
       const int& Nz,
       const int& neighbor_x_higher,
@@ -177,13 +175,12 @@ int SPF_NS::update_ghosts(
                0, // tag identifies which message to receive from source
                neighbors_comm, 
                &halo_requests[0]);
-   MPI_Irecv( &data[(Nx_local+1)*Ny*Nz],//TODO: should this be Nx_local+2 ?
+   MPI_Irecv( &data[(Nx_local+1)*Ny*Nz],
                Ny*Nz, MPI_DOUBLE, 
                neighbor_x_higher, 
                1,// lower neighbor receives from higher neighbor with tag 1
                neighbors_comm, &halo_requests[1]);
-   //MPI_Isend( &phi_local[0 +  Nx_local*Ny ],
-   MPI_Isend( &data[(Nx_local)*Ny*Nz ],   //TODO: Nx_local+1 ??
+   MPI_Isend( &data[(Nx_local)*Ny*Nz ],
                Ny*Nz, MPI_DOUBLE, 
                neighbor_x_higher, // destination node rank
                0, // tag

@@ -1,6 +1,8 @@
 /* ----------------------------------------------------------------------
     SPF - Stochastic Phase Field
-    Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
+    Copyright (C) 2025
+    Peng Geng <penggeng@g.ucla.edu>
+    Nicholas Huebner Julian <njulian@ucla.edu>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +27,8 @@
 
 #include <cstdlib>   // EXIT_SUCCESS & EXIT_FAILURE
 #include <random>    // default_random_engine, uniform_real_distribution
+#include "Random123/philox.h"   // philox random number generator
+#include "Random123/uniform.hpp"  // uniform distribution
 
 #ifndef PI
 #define PI 3.141592653589793238462643382795028814971693993751058209
@@ -38,76 +42,42 @@ namespace SPF_NS
    class random
    {
       public:
-         //int rotation( double& omega, double& theta, double& phi);
-         //int rotation( double& omega, double& xx, double& yy, double& zz);
-         //int orientation3D( double& xx, double& yy, double& zz);
-         ////int magnitude( double& mm );
-         //int displacement1D( double& xx, const double& scale);
-         //int displacement2D( double& xx, double& yy, const double& scale);
-         //int displacement3D( double& xx, double& yy, double& zz, const double& scale);
-            //, double& zz)//, const double& T = 1.0)
-         
-         int gaussiandisplacement1D( double& xx, const double& scale);
-         int unitdisplacement1D( double& xx, const double& fwd, 
-                                    const double& bkwd);
-         //double exponentialWaitTime( const double& rate, 
-         //                           const double& totalRate );
-         //bool bernoulli( const double& pp );
-
-         // poisson process 
-         //bool poisson_trial();
-         
-         //double get_subinterval( )
-         //{
-         //   return subinterval;
-         //}
-
-         //int update_poisson_rate( const double& r, const double& dt )
-         //{
-         //   // free the previous poisson_event_count and create a new one
-         //   poisson_event_count
-         //      = std::poisson_distribution<int>( r );
-         //   ////subinterval = 1.0 - exp( -1.0 * r * dt );
-         //   //subinterval = r * dt * exp( -1.0 * r * dt );
-         //   return EXIT_SUCCESS;
-         //}
-
          std::random_device rd;
          std::mt19937 generator;
-         ////std::uniform_real_distribution<double> 
-         ////   uniform_positive_unit_distribution;
-         ////std::uniform_real_distribution<double> uniform_angle;
-         ////std::uniform_real_distribution<double> uniform_coord;
          std::uniform_real_distribution<double> uniform_scale;
-         ////std::normal_distribution<double> normal_distance;
-         //std::normal_distribution<double> gaussian_sample;
-         //std::poisson_distribution<int> poisson_event_count;
-         // CONSTRUCTOR
-         random( ) //const double& r, const double& dt )
-         {
-            //std::random_device rd; 
-            generator = std::mt19937(rd());
-            //poisson_event_count
-            //   = std::poisson_distribution<int>( r );
-            //gaussian_sample
-            //   = std::normal_distribution<double>( 0.0, r );
-            //uniform_angle
-            //   = std::uniform_real_distribution<double>( 0.0, 1.0*PI);
-            //uniform_coord
-            //   = std::uniform_real_distribution<double>( -1.0, 1.0);
-            //normal_distance 
-            //   = std::normal_distribution<double>( 0.0, 1.0);
-            //uniform_positive_unit_distribution
-            //   = std::uniform_real_distribution<double>( 0.0, 1.0);
-            uniform_scale
-               = std::uniform_real_distribution<double>( 0.0, 1.0);
 
-            ////subinterval = 1.0 - exp( -1.0 * r * dt );
-            //subinterval = r * dt * exp( -1.0 * r * dt );
+         using philox_type = r123::Philox4x64;
+         philox_type rng;
+         philox_type::key_type key;
+         philox_type::ctr_type ctr;
+
+         uint64_t counter = 0;
+
+         // CONSTRUCTOR
+         random(uint64_t seed = 0, uint64_t rank = 0)
+         {
+            generator = std::mt19937(rd());
+            uniform_scale = std::uniform_real_distribution<double>( 0.0, 1.0);
+
+            key[0] = seed;
+            key[1] = rank;
+            ctr = {{0, 0, 0, 0}};
          }
 
-      private:
-         //double subinterval;
+         // Reset Philox counter for a new timestep
+         void reset_counter(uint64_t timestep)
+         {
+            counter = 0;
+            ctr[1] = timestep; // vary RNG per timestep
+         }
+
+         // Generate uniform (0,1] using Philox
+         uint64_t philox_generator()
+         {
+            ctr[0] = counter++; // bump counter
+            auto result = rng(ctr, key);
+            return result[0];
+         }
    };
 }
 #endif

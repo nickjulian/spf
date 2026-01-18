@@ -1,6 +1,8 @@
 /* ----------------------------------------------------------------------
     SPF - Stochastic Phase Field
-    Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
+    Copyright (C) 2025 
+    Peng Geng <penggeng@g.ucla.edu>
+    Nicholas Huebner Julian <njulian@ucla.edu>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,168 +27,36 @@
 
 #include "read_parameter_file.hpp"
 
-int SPF_NS::read_state_file_list(
-               const std::string& list_file_name,
-               std::vector<std::string>& state_file_names
-               )
-{
-   std::ifstream list_file( list_file_name.c_str() );
-   if ( list_file.is_open() )
-   {
-      std::string state_file_name;
-      std::string list_file_line;
-      size_t first_pos; 
-      // iterate over the lines in the file
-      while (std::getline( list_file, list_file_line ) && list_file.good())
-      {
-         // skipping lines of whitespace
-         first_pos = list_file_line.find_first_not_of(" \t");
-         while ( first_pos == std::string::npos )
-         {
-            std::getline( list_file, list_file_line );
-            first_pos = list_file_line.find_first_not_of(" \t");
-         }
-         std::istringstream list_file_line_stream( list_file_line );
-         list_file_line_stream >> state_file_name;
-
-         state_file_names.push_back( state_file_name );
-      }
-      //if ( ! list_file.good() )
-      //{
-      //   std::cerr << "Error, state of opened file "
-      //      << list_file_name
-      //      << ".good() is false" << std::endl;
-      //   list_file.close();
-      //   std::cout << "state_file_names : ";
-      //   for ( std::vector<std::string>::const_iterator itr = state_file_names.begin(); itr != state_file_names.end(); ++itr)
-      //      std::cout << std::endl << "   " << *itr;
-      //   std::cout << std::endl;
-      //   return EXIT_FAILURE;
-      //}
-   }
-   else
-   {
-      std::cerr << "Error opening file " << list_file_name << std::endl;
-      list_file.close();
-      return EXIT_FAILURE;
-   }
-   list_file.close();
-   return EXIT_SUCCESS;
-}
-
 int SPF_NS::read_parameter_file(
-      const string& parameter_filename,
-      int_flags& flags,
-      double& dt,
-      int& Nt,
-      int& Nv,
-      int& write_period,
-      string& output_prefix,
-      string& input_field_name,
-      const int& mynode,
-      const int& rootnode,
-      MPI_Comm comm
-      )
-{
-      double hh_x;
-      double ww;
-      double shape_constant;
-      double mobility;
-      double kappa;
-      double c_alpha;
-      double c_beta;
-      std::string datasetPath = "/phi";
-      return read_parameter_file(
-                  parameter_filename,
-                  flags,
-                  dt,
-                  Nt,
-                  Nv,
-                  hh_x,
-                  ww,
-                  shape_constant,
-                  mobility,
-                  kappa,
-                  c_alpha,
-                  c_beta,
-                  write_period,
-                  output_prefix,
-                  input_field_name,
-                  datasetPath,
-                  mynode,
-                  rootnode,
-                  comm
-                  );
-}
-
-int SPF_NS::read_parameter_file(
-      const string& parameter_filename,
-      int_flags& flags,
-      double& dt,
-      int& Nt,
-      int& Nv,
-      double& hh_x,
-      double& ww,
-      double& shape_constant,
-      double& mobility,
-      double& kappa,
-      double& c_alpha,
-      double& c_beta,
-      int& write_period,
-      string& output_prefix,
-      string& input_field_name,
-      const int& mynode,
-      const int& rootnode,
-      MPI_Comm comm
-      )
-{
-      std::string datasetPath = "/phi";
-      return read_parameter_file(
-                  parameter_filename,
-                  flags,
-                  dt,
-                  Nt,
-                  Nv,
-                  hh_x,
-                  ww,
-                  shape_constant,
-                  mobility,
-                  kappa,
-                  c_alpha,
-                  c_beta,
-                  write_period,
-                  output_prefix,
-                  input_field_name,
-                  datasetPath,
-                  mynode,
-                  rootnode,
-                  comm
-                  );
-}
-
-int SPF_NS::read_parameter_file(
-      const string& parameter_filename,
-      int_flags& flags,
-      double& dt,
-      int& Nt,
-      int& Nv,
-      double& hh_x,
-      double& ww,
-      double& shape_constant,
-      double& mobility,
-      double& kappa,
-      double& c_alpha,
-      double& c_beta,
-      int& write_period,
-      string& output_prefix,
-      string& input_field_name,
-      string& datasetPath,
-      const int& mynode,
-      const int& rootnode,
-      MPI_Comm comm
-      )
+    const string &parameter_filename,
+    int_flags &flags,
+    double &dt,
+    int &Nt,
+    double &hh_x,
+    double &shape_constant,
+    double &mobility,
+    double &kappa,
+    double &c_alpha,
+    double &c_beta,
+    double &h_d,
+    double &h_c,
+    int &fix_y,
+    int &c_extreme,
+    double &c_fluc_theta,
+    double &molar_volume,
+    int &Rho_W,
+    int &Rho_Cr,
+    int &write_period,
+    string &output_prefix,
+    string &input_field_name,
+    string &datasetPath,
+    string &TPath,
+    const int &mynode,
+    const int &rootnode,
+    MPI_Comm comm)
 {
    ifstream parameter_file( parameter_filename.c_str() );
+   //flags.parameter_file = 1;
    if ( parameter_file.is_open() )
    {
       //cout << "reading " << parameter_filename.c_str() << endl;
@@ -236,20 +106,20 @@ int SPF_NS::read_parameter_file(
             file_line_stream >> Nt;
             flags.Nt = 1;
          }
-         else if (! line_chunk.compare("-Nv") )
-         {
-            file_line_stream >> Nv;
-            flags.Nt = 1;
-         }
-         else if (! line_chunk.compare("-mesh-size") )
+         //else if (! line_chunk.compare("-Nv") )
+         //{
+         //   file_line_stream >> Nv;
+         //   flags.Nv = 1;
+         //}
+         else if (! line_chunk.compare("-mesh_size") )
          {
             file_line_stream >> hh_x;
          }
-         else if (! line_chunk.compare("-order-energy") )
-         {
-            file_line_stream >> ww;
-         }
-         else if (! line_chunk.compare("-shape-constant") )
+         //else if (! line_chunk.compare("-order-energy") )
+         //{
+         //   file_line_stream >> ww;
+         //}
+         else if (! line_chunk.compare("-shape_constant") )
          {
             file_line_stream >> shape_constant;
          }
@@ -261,18 +131,55 @@ int SPF_NS::read_parameter_file(
          {
             file_line_stream >> kappa;
          }
-         else if (! line_chunk.compare("-c-alpha") )
+         else if (! line_chunk.compare("-c_alpha") )
          {
             file_line_stream >> c_alpha;
          }
-         else if (! line_chunk.compare("-c-beta") )
+         else if (! line_chunk.compare("-c_beta") )
          {
             file_line_stream >> c_beta;
+         }
+         else if (! line_chunk.compare("-h_d") )
+         {
+            file_line_stream >> h_d;
+         }
+         else if (! line_chunk.compare("-h_c") )
+         {
+            file_line_stream >> h_c;
          }
          else if (! line_chunk.compare("-wp") )
          {
             file_line_stream >> write_period;
             flags.wp = 1;
+         }
+         else if (! line_chunk.compare("-fix_y") )           
+         {
+            file_line_stream >> fix_y;
+         }
+         else if (!line_chunk.compare("-c_extreme"))
+         {
+            file_line_stream >> c_extreme;
+         }
+         else if (! line_chunk.compare("-c_fluc_theta") )           
+         {
+            file_line_stream >> c_fluc_theta;
+         }
+         else if (! line_chunk.compare("-molar_volume") )           
+         {
+            file_line_stream >> molar_volume;
+         }
+         else if (! line_chunk.compare("-Rho_W") )           
+         {
+            file_line_stream >> Rho_W;
+         }
+         else if (! line_chunk.compare("-Rho_Cr") )           
+         {
+            file_line_stream >> Rho_Cr;
+         }
+         else if (!line_chunk.compare("-TPath"))               
+         {
+            file_line_stream >> TPath;
+            flags.datasetPathT = 1;
          }
          else if (! line_chunk.compare("-stat") )
          {
@@ -293,8 +200,8 @@ int SPF_NS::read_parameter_file(
             return EXIT_FAILURE;
          }
       }
+      return EXIT_SUCCESS;
    }
-   return EXIT_SUCCESS;
+   return EXIT_FAILURE;
 }
-
 #endif

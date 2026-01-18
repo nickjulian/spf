@@ -34,7 +34,6 @@ namespace SPF_NS
          const std::vector<double>& flux_upward_rates, // Ny*Nz
          const std::vector<double>& flux_downward, // Ny*Nz
          const std::vector<double>& flux_downward_rates, // Ny*Nz
-         //const int& Nx_local,
          const int& Ny,
          const int& Nz,
          const int& neighbor_x_higher,

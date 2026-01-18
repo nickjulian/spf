@@ -1,34 +1,204 @@
-------------------------------------------------------------------------
-This is the SPF software package implementing stochastically driven 
-numerical field evolution on rectangular grids.
+----------------------------------------------------------------------------------
+SPF is a software package for simulating stochastically driven numerical field 
+evolution on rectangular grids. It was originally developed for phase-field 
+modeling of the W–Cr system, but the framework is general and extensible,
+and can be readily applied to other material systems.
 
-Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>. This
-software is distributed under the GNU General Public License.
+Copyright (C) 2025 
+Peng Geng <penggeng@g.ucla.edu> and Nicholas Huebner Julian <njulian@ucla.edu>. 
+This software is distributed under the GNU General Public License.
 
-------------------------------------------------------------------------
-The author of this code is Nicholas H. Julian, who can be emailed at
-njulian@ucla.edu
+----------------------------------------------------------------------------------
+This code accompanies the publication:
+
+Peng Geng, Nicholas H Julian, Qianran Yu, Enrique Martinez, 
+Parallel simulations of 3D hierarchical microstructures in W-Cr using 
+a fluctuation-governed Cahn-Hilliard model, 
+Modelling and Simulation in Materials Science and Engineering. 34, 015012 (2025), 
+doi:10.1088/1361-651X/ae2cab.
+
+The code was developed by Peng Geng and Nicholas H. Julian. 
+For questions or correspondence, please contact:
+Peng Geng <penggeng@g.ucla.edu>
+Nicholas H. Julian <njulian@ucla.edu>
 
 The SPF distribution includes the following files and directories:
 
 README               this file
 LICENSE              the GNU General Public License (GPL)
-src                  source files
-build                directory for local building; contains the Makefile
-
-Directories you may be required to create:
+bench                directory for generating initial input fields
 bin                  directory to which compiled executables are saved
-lib                  location of locally compiled libraries
-include              location of locally compiled files to include
+build                directory for local building; contains the Makefile
+include              directory containing HDF5 header files (e.g., hdf5.h)
+lib                  directory containing HDF5 libraries (e.g., libhdf5.so)
+src                  directory of source files
+tutorial             directory of tutorials to learn how to use the SPF package
+viz_analysis         directory of visualization and data analysis code
 
-SPF makes use of the following libraries, which must be present on the 
-system for which it is compiled:
+----------------------------------------------------------------------------------
+Table of Contents
 
-  HDF5 version 1.10.5. Other versions are untested.
-   <hdf5.h>
+1. Compilation
+2. Simulation Setup
+3. Run Simulation
+4. Simulation Output
+5. Data Visualization and Analysis
+6. Tutorial
 
-Modification of build/Makefile may be required to ensure proper library
-inclusion and compiler selection.
+----------------------------------------------------------------------------------
+1. Compilation
 
-Several executables may be compiled, differing mostly by the choice of
-stochastic processes and numerical models which drive their evolution.
+For the W-Cr system, a precompiled executable is provided in the bin directory
+as spf_3d.x.
+
+For other material systems, the source files in the src directory may require 
+modification to define system-specific parameters and physics. After making the
+necessary changes, navigate to the build directory and compile the code using the 
+provided Makefile by running:
+
+make
+
+During compilation, the following system libraries must be available:
+
+GCC v11.3.0 (other versions have not been tested)
+
+MPICH v3.4 (other versions have not been tested)
+
+All other required libraries are included with the package. These include 
+HDF5 v1.10.5, located in the include and lib directories, and Random123 v1.14.0,
+located in src/Random123.
+
+----------------------------------------------------------------------------------
+2. Simulation Setup
+
+The SPF package requires two input files:
+
+initial_field
+parameter_file
+
+The initial_field file can be generated using the Python script writehdf5.py
+located in the bench directory. This script requires NumPy v2.3.5 and h5py v3.15.1.
+Other versions have not been tested. Please follow the comments and instructions
+within writehdf5.py to modify the script as needed and generate the desired initial
+field. The resulting files will be written to the bench/initial_fields directory.
+
+The parameter_file can be taken from any directory within the tutorial directory, 
+as each parameter file contains detailed in-line comments.
+
+----------------------------------------------------------------------------------
+3. Run Simulation
+
+With the initial_field and parameter_file in the same directory, and with
+GCC v11.3.0 and MPICH v3.4 available on the system, the simulation can be 
+launched using:
+
+mpirun -n <num_cores> /path/to/spf_W-Cr/bin/spf_3d.x
+
+The SPF code is parallelized using MPI and is designed for large-scale
+three-dimensional simulations. Currently, parallelization is implemented only
+along the x-direction, so the maximum number of MPI processes cannot exceed the
+number of voxels along x, and the number of processes should evenly divide the
+voxel count in x.
+
+For small test cases and periodic-homogeneous-system tutorial examples, runs with
+5–15 MPI processes are typically sufficient. Production-scale 3D simulations
+benefit from larger core counts, though optimal performance depends on system size,
+grid resolution, and communication overhead. Users are encouraged to perform
+scaling tests on their target HPC system to determine the most efficient number of
+MPI processes for their specific problem.
+
+An example Slurm submission script, submit_job.sh, is provided in the tutorial
+directory.
+
+----------------------------------------------------------------------------------
+4. Simulation Output
+
+During simulation, the SPF code writes simulation output in HDF5 format to the
+current working directory. The output consists of time-resolved HDF5 files
+containing the evolving concentration and temperature fields. This file is
+intended for post-processing and visualization using the scripts provided in the
+viz_analysis directory. Users are advised to ensure sufficient disk space is
+available, as large 3D simulations can generate substantial output data.
+
+----------------------------------------------------------------------------------
+5. Data Visualization and Analysis
+
+viz_analysis directory has three Python scripts: hdf5tovti.py, 
+structure_factor_cal.py, and average_radius.py.
+
+The hdf5tovti.py script converts the simulation output HDF5 file into VTI format,
+generating one VTI file per simulation step. These VTI files can then be imported
+into OVITO for visualization and post-processing. The hdf5tovti.py script requires
+h5py v3.15.1 and vtk v9.5.2. Other versions have not been tested.
+
+The structure_factor_cal.py script computes the structure factor from the
+simulation output HDF5 file using the method described in Section 2.2 of the
+referenced paper.
+
+The average_radius.py script estimates the average cluster radius from the
+simulation output HDF5 files by applying a threshold to identify spherical cluster
+voxels. Note that this approach may underestimate the average radius produced by
+the SPF simulations and therefore requires further verification.
+
+----------------------------------------------------------------------------------
+6. Tutorial
+
+In the tutorial directory, there are two directories: periodic-homogeneous-system
+and nonperiodic-gradient-system.
+
+The periodic-homogeneous-system directory contains examples of systems with
+periodic boundary conditions in all directions and uniform concentration and
+temperature across all voxels.
+
+This directory includes four example cases:
+
+(1) Cr-10 at.% W at 1100 K    (Section 3.2 simulation of the referenced paper)
+(2) Cr-20 at.% W at 1100 K    (Section 3.2 simulation of the referenced paper)
+(3) Cr-40 at.% W at 1100 K    (Section 3.3 simulation of the referenced paper)
+(4) Cr-40 at.% W at 1500 K    (Section 3.3 simulation of the referenced paper)
+
+Examples (1) and (2) are simulated at the same temperature but with different
+concentrations, while examples (3) and (4) have the same concentration but are
+simulated at different temperatures.
+
+The nonperiodic-gradient-system directory contains example simulations with
+nonperiodic boundary conditions along the y direction and spatial gradients in
+concentration and temperature along y.
+
+This directory includes two example cases:
+
+(1) C0.1-0.9 at 1100 K        (Section 3.4.2 simulation of the referenced paper)
+(2) C0.4 at 900-1900 K        (Section 3.4.3 simulation of the referenced paper) 
+ 
+Example (1) is simulated at 1100 K, with the concentration changing from 0.1 to 0.9
+in increments of 10 at.% W, with each concentration represented by 10 voxel layers
+along the y direction. In example (2), the system composition is fixed at
+Cr–40 at.% W, while the temperature varies from 900 K to 1900 K along the y
+direction. Each voxel layer corresponds to a 2 K temperature increment.
+
+----------------------------------------------------------------------------------
+Citing This Code
+
+If you use the SPF code in your research or publications, please cite the
+following paper, which this code accompanies:
+
+Peng Geng, Nicholas H Julian, Qianran Yu, Enrique Martinez, 
+Parallel simulations of 3D hierarchical microstructures in W-Cr using 
+a fluctuation-governed Cahn-Hilliard model, 
+Modelling and Simulation in Materials Science and Engineering. 34, 015012 (2025), 
+doi:10.1088/1361-651X/ae2cab.
+
+BibTex
+@article{Geng_2025,
+doi = {10.1088/1361-651X/ae2cab},
+url = {https://doi.org/10.1088/1361-651X/ae2cab},
+year = {2025},
+month = {dec},
+publisher = {IOP Publishing},
+volume = {34},
+number = {1},
+pages = {015012},
+author = {Geng, Peng and Julian, Nicholas H and Yu, Qianran and Martinez, Enrique and Marian, Jaime},
+title = {Parallel simulations of 3D hierarchical microstructures in W-Cr using a fluctuation-governed Cahn–Hilliard model},
+journal = {Modelling and Simulation in Materials Science and Engineering},
+}

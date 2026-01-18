@@ -1,0 +1,23 @@
+-i                  initial_field_60x60x60_C0.1T300.h5        #<input field hdf5 file>
+-o                  50                                              #<output file prefix>
+-datasetPath        /phi                        #<concentration path to initial field within hdf5 file>
+-TPath              /T                          #<temperature path to initial field within hdf5 file>
+-fix_y              0                           #<0=periodic. 1=fix y direction.>
+-c_extreme          1                           #<mixture contraction free energy adjustment for temperature, only use it when concentration has no phase separation. 0=close, 1=open.>
+-Nt                 100000                      #<number of time steps>
+-dt                 0.01                        #<time increment>
+-wp                 100                        #<steps between file writes>
+-c_fluc_theta       0.016                       #<concentration fluctuation coefficient nu>
+-mobility           2.5e-28                     #<mobility M>
+-mesh_size          1e-9                        #<one voxel length (assuming cubic)>
+-shape_constant     5.783e9                     #<shape constant gamma>
+-c_alpha            0.05                        #<double-well free energy two well depth>
+-c_beta             0.95                        #<double-well free energy two well depth>
+-kappa              4e-5                        #<gradient energy coefficient>
+-h_d                7.9e-18                     #<thermal diffusivity>
+-h_c                292                         #<heat capacity>
+-molar_volume       8.35e-6                     #<molar volume>
+-Rho_W              19200                       #<W mass density>
+-Rho_Cr             7200                        #<Cr mass density>
+-stat                                           #<for debug>
+-debug                                          #<for debug>

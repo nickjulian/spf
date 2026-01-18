@@ -1,100 +1,56 @@
+#########################################################################
+#    SPF - Stochastic Phase Field
+#    Copyright (C) 2025 
+#    Peng Geng <penggeng@g.ucla.edu>
+#    Nicholas Huebner Julian <njulian@ucla.edu>
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+#    See the README file in the top-level SPF directory.
+#########################################################################
+
 ROOT 		= ..
+SRC_DIR         = $(ROOT)/src
+BIN_DIR         = $(ROOT)/bin
+
 CXX  		= mpicxx
-#CXX  		= cxx
-#HCXX  	= h5cc
-CXXFLAGS = -g -I$(ROOT)/include #-std=c++11
-#LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/
-#LIBS		= -L$(ROOT)/lib -lm -L/usr/lib64/ -lnetcdf_c++
-#HLIBS		= -L/home/user/xfer-software/hdf5/hdf5-1.10.5/lib -lhdf5
-LIBS		= -lhdf5 -L$(ROOT)/lib -lm -lz -lsz -lmpi -ldl -L/usr/lib64 #$(HLIBS)
-OBJS		= read_cmdline.o readHDF5c.o writeHDF5c.o check_for_failure.o spf_communication.o voxel_dynamics.o read_parameter_file.o rand1D.o jumps.o rungekutta.o stochastic_rates.o #ensemble_quantities.o
-SRCS		= ../src/read_cmdline.cpp ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp ../src/spf_communication.cpp ../src/voxel_dynamics.cpp ../src/read_parameter_file.cpp ../src/rand1D.cpp ../src/jumps.cpp ../src/rungekutta.cpp ../src/stochastic_rates.cpp #../src/ensemble_quantities.cpp
-#HSRCS		= ../src/check_for_failure.cpp ../src/readHDF5c.cpp ../src/writeHDF5c.cpp
-TARGET	= $(ROOT)/bin/test.x
 
-#random:		$(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_random_processes.cpp $(OBJS) $(LIBS) -o $(ROOT)/bin/test_random_processes.x
-#	#$(CXX) $(ROOT)/src/test_random_processes.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(TARGET)
-#
-#poisson: $(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_poisson_process.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_poisson.x
-#
-#marcus: $(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_marcus.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus.x
-#
-#drift: $(OBJS) $(HOBJS)
-#	$(CXX) $(ROOT)/src/test_marcus_drift.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/test_marcus_drift.x
+CXXFLAGS        = -g -I$(ROOT)/include -I$(SRC_DIR)
+LDFLAGS         = -L$(ROOT)/lib -L/usr/lib64 -Wl,-rpath,'$$ORIGIN/../lib'
+LDLIBS		= -lhdf5 -lm -lz -lsz -lmpi -ldl
 
-spf: $(OBJS) #$(HOBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_single.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_single.x
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_single_milstein.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_single_milstein.x
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_separate.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_separate.x
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_separate_milstein.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_separate_milstein.x
-	$(CXX) $(ROOT)/src/spf_pure_poisson_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_simple.x
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_simple.x
+SRCS		= $(SRC_DIR)/check_for_failure.cpp \
+                  $(SRC_DIR)/readHDF5c.cpp \
+                  $(SRC_DIR)/writeHDF5c.cpp \
+                  $(SRC_DIR)/spf_communication.cpp \
+                  $(SRC_DIR)/voxel_dynamics.cpp \
+                  $(SRC_DIR)/read_parameter_file.cpp \
+                  $(SRC_DIR)/stochastic_rates.cpp
 
-spf-poisson-simple: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_simple.x
+OBJS            = $(notdir $(SRCS:.cpp=.o))
 
-spf-gaussian-simple: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_simple.x
+TARGET	        = $(BIN_DIR)/spf_3d.x
 
-spf-gaussian-pairwise-simple: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_pairwise_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_pairwise_simple.x
+all: $(TARGET)
 
-spf-poisson-pairwise-simple: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_pairwise_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_pairwise_simple.x
+$(TARGET): $(OBJS) | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(SRC_DIR)/spf_3d.cpp $(LDFLAGS) $(LDLIBS) -o $@
 
-spf-poisson-pairwise-drift-simple: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_pairwise_drift_simple.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_pairwise_drift_simple.x
+%.o: $(SRC_DIR)/%.cpp
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-spf-gaussian-pairwise-double-well: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_pairwise_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_pairwise_double_well.x
-
-spf-poisson-pairwise-double-well: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_pairwise_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_pairwise_double_well.x
-
-spf-poisson-pairwise-drift-double-well: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_pairwise_drift_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_pairwise_drift_double_well.x
-
-spf-poisson-double-well: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_poisson_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_poisson_double_well.x
-
-spf-gaussian-double-well: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_double_well.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_double_well.x
-
-spf-gaussian-double-well-ito: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_pure_gaussian_double_well_ito.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian_double_well_ito.x
-
-spf-srscd-3d: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_srscd_3d.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_srscd_3d.x
-
-stats: $(OBJS) #$(HOBJS)
-	$(CXX) $(ROOT)/src/statsHDF5.cpp $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_stats.x
-
-1d-walks: $(OBJS)
-	$(CXX) $(ROOT)/src/walk_ensembles_1d.cpp  $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_walk_ensembles_1d.x
-
-## record Poisson and Brownian random walks in 1-D with average of 0
-1d-walks-mu0: $(OBJS)
-	$(CXX) $(ROOT)/src/walk_ensembles_mu0_1d.cpp  $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_walk_ensembles_mu0_1d.x
-
-1d-escape: $(OBJS)
-	$(CXX) $(ROOT)/src/escape_time_ensembles_1d.cpp  $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_escape_time_ensembles_1d.x
-
-1d-exponential: $(OBJS)
-	$(CXX) $(ROOT)/src/spf_convergencetoexponential_1d.cpp  $(OBJS) $(CXXFLAGS) $(LIBS) -o $(ROOT)/bin/spf_convergencetoexponential_1d.x
-
-#$(CXX) $(ROOT)/src/spf_pure_gaussian.cpp $(OBJS) $(HOBJS) $(LIBS) -o $(ROOT)/bin/spf_pure_gaussian.x
-
-$(OBJS):
-	$(CXX) -g -c $(CXXFLAGS) $(LIBS) $(SRCS)
-
-#$(HOBJS):
-#	$(CXX) -g -c $(CXXFLAGS) $(HLIBS) $(HSRCS)
-
-all:	$(TARGET)
-#all:	poisson random marcus
-
+.PHONY: clean
 clean:
-	rm -f $(OBJS) $(HOBJS) $(TARGET)  ../bin/spf_1d.x
+	rm -f $(OBJS)

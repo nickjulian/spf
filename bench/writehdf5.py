@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 #########################################################################
 #    SPF - Stochastic Phase Field
-#    Copyright (C) 2019 Nicholas Huebner Julian <njulian@ucla.edu>
+#    Copyright (C) 2025 
+#    Peng Geng <penggeng@g.ucla.edu>
+#    Nicholas Huebner Julian <njulian@ucla.edu>
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -24,102 +26,72 @@
 #   accordingly to create the field values you desire.
 # Requirements: numpy, h5py
 
-import os.path
-#import argparse
 import numpy as np
-#import matplotlib.pyplot as plt
-#import matplotlib.colors as colors
-#from matplotlib.gridspec import GridSpec
-#from matplotlib.patches import Circle
-#from matplotlib.patches import Rectangle
-#import statistics as stat
-#from scipy.io import netcdf
 import h5py
 
 def main():
+    
+    "Initial fields file name."
+    fileName = "initial_fields/initial_field_60x60x60_C0.5T300.h5"
+    
+    "Input any size of voxel system along the x, y, and z directions."
+    Nx = 60
+    Ny = 60
+    Nz = 60
+    
+    "Please choose one voxel field by commenting out the corresponding commands below."
+    
+    "1. Homogenious system (Example: Cr-50 at.% W at 300 K)"
+    
+    #Concentration
+    data = 0.5*np.ones((Nx,Ny,Nz))
+    #Temperature
+    dataT = 300*np.ones((Nx,Ny,Nz))
+    
+    "2. Gradient system along y direction"
+    "(Example: 6 layers concentration gradient range from Cr-30 at.% W to Cr-80 at.% W)"
+    "(         Each concentration layer has 10 at.% W increment)"
+    "(         60 layers temperature gradient range from 300-360 K)"
+    "(         Each temperature layer has 1 K increment)"
+    
+    #Concentration gradient
+    #data = 0.3*np.ones((Nx,Ny,Nz))
 
-    debug = False
-    #debug = True
+    #num_parts = 6
+    #values_per_part = 10
+    #increment_per_part = 0.1
 
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument("inFilePath", help="data file in netcdf format")
+    #for part in range(num_parts):
+    #    start_idx = part * values_per_part
+    #    end_idx = (part+1) * values_per_part
+    #    data[:, start_idx:end_idx, :] += part * increment_per_part
+    
+    
+    #Temperature gradient
+    #dataT = 300*np.ones((Nx,Ny,Nz))
+    
+    #num_parts = 60
+    #values_per_part = 1
+    #increment_per_part = 1
 
-    #args = parser.parse_args()
-    #inFilePath = str( args.inFilePath )
-    #inFileName = os.path.split( inFilePath )[1]
-    #inFileRef = os.path.splitext( inFileName )[0]
-    #inFileDir = os.path.split( inFilePath )[0]
-
-    fileName = "initial_fields/initial_field_4x4x4_mean1.h5"
-
-    #Nt = 2
-    #Nx = 3
-    #Ny = 3
-    #Nz = 3
-    Nx = 4
-    Ny = 4
-    Nz = 4
-    #Nx = 30
-    #Ny = 30
-    #Nz = 30
-
-    #data = np.zeros((Nt,Nx,Ny,Nz))
-    data = np.zeros((Nx,Ny,Nz))
-    #xx = np.zeros(Nx)
-    #yy = np.zeros(Ny)
-    #zz = np.zeros(Nz)
-
-    #for t in range(Nt):
-    #data[2,2,2] = 0.4
-    mu, sigma = 1.0, 1.00
-    for i in range(Nx):
-        for j in range(Ny):
-            for k in range(Nz):
-                #if ( (i,j,k) == (0,0,0)):
-                #    data[i,j,k] = 1.0
-                #else:
-                #    data[i,j,k] = 0.0
-                data[i,j,k] = np.max((0.0, np.min((np.random.normal(mu, sigma), 2.0))))
-                data[i,j,k] = np.round( data[i,j,k])
-                #if ((i-50)**2 + (j-50)**2 + (k-50)**2 < (5)**2 ):
-                #    data[i,j,k] = 100
-                #else: data[i,j,k] = 0
-                #data[i,j,k] = np.sin(i*2*np.pi / Nx )#*np.sin(j*2*np.pi/Ny - np.pi)*np.sin(k*2*np.pi/Nz - np.pi)
-                #data[i,j,k] = np.sin(i*2*np.pi/Nx - np.pi)*np.sin(j*2*np.pi/Ny - np.pi)*np.sin(k*2*np.pi/Nz - np.pi)
-                #if ( i == Nx/2 ) and ( j == Ny/2 ) and ( k == Nz/2 ) :
-                #    data[i,j,k] = 1
-                #if ( np.abs(i - Nx/2) < 2) and ( np.abs(j - Ny/2) < 2) and ( np.abs(k - Nz/2) < 2) :
-                #    data[i,j,k] = 100
-                #else :
-                #    data[i,j,k] = 100
-                #data[i,j,k] = 1.0/(1.0+np.abs(0.5*Nx - i) \
-                #        + np.abs(0.5*Ny - j)   \
-                #        + np.abs(0.5*Nz - k))
-                #data[i,j,k] = 1.0/(1.0+((np.cos(np.abs(0.5*Nx - i)))**2 \
-                #        + (np.cos(np.abs(0.5*Ny - j)))**2   \
-                #        + (np.cos(np.abs(0.5*Nz - k)))**2 ))
-                #data[i,j,k] = (i*1.0/Nx)
-                #data[i,j,k] = (1.0/(Nx*Ny*Nz))*(k + Nz*(j + Ny*i))
-                ##data[i,j,k] = k + Nz*(j + Ny*i)
-                #print( data[i,j,k] )
-                ##data[0,i,j,k] = k + Nz*(j + Ny*i)
-                ##data[1,i,j,k] = 1 + k + Nz*(j + Ny*i)
-                ##print( data[0,i,j,k] )
-
-    outFile = h5py.File( fileName, 'w')#, mmap=False)
-    #phidataset = outFile.create_dataset("phi", (Nt,Nx,Ny,Nz), dtype='f')
+    #for part in range(num_parts):
+    #    start_idx = part * values_per_part
+    #    end_idx = (part+1) * values_per_part
+    #    dataT[:, start_idx:end_idx, :] += part * increment_per_part
+    
+    "set up output"
+    outFile = h5py.File( fileName, 'w')
     phidataset = outFile.create_dataset("phi", (Nx,Ny,Nz), dtype='f')
+    Tdataset = outFile.create_dataset("T", (Nx,Ny,Nz), dtype='f')
 
-    #for t in range(Nt):
     for i in range(Nx):
         for j in range(Ny):
             for k in range(Nz): 
-                #phidataset[t,i,j,k] = data[t,i,j,k]
                 phidataset[i,j,k] = data[i,j,k]
+                Tdataset[i,j,k] = dataT[i,j,k]
        
     outFile.close()
     return
-
 
 if __name__ == "__main__":
     main()

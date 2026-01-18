@@ -133,12 +133,16 @@ h5py v3.15.1 and vtk v9.5.2. Other versions have not been tested.
 
 The structure_factor_cal.py script computes the structure factor from the
 simulation output HDF5 file using the method described in Section 2.2 of the
-referenced paper.
+referenced paper. The structure_factor_cal.py requires h5py v3.15.1, numpy v2.3.5,
+scipy v1.16.3, openpyxl v3.1.5, and matplotlib v3.10.8. Other versions have not
+been tested.
 
 The average_radius.py script estimates the average cluster radius from the
 simulation output HDF5 files by applying a threshold to identify spherical cluster
 voxels. Note that this approach may underestimate the average radius produced by
-the SPF simulations and therefore requires further verification.
+the SPF simulations and therefore requires further verification. The
+average_radius.py requires h5py v3.15.1, numpy v2.3.5, vtk v9.5.2, scipy v1.16.3,
+and openpyxl v3.1.5. Other versions have not been tested.
 
 ----------------------------------------------------------------------------------
 6. Tutorial

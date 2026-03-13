@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 #include <mpi.h>
-#include "../include/hdf5.h"
+#include <hdf5.h>
 
 #include "check_for_failure.hpp"
 #include "flags.hpp"

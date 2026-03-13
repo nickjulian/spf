@@ -32,7 +32,7 @@
 #include <chrono>
 
 #include <mpi.h>
-#include "../include/hdf5.h"
+#include <hdf5.h>
 
 #include "check_for_failure.hpp"
 #include "read_parameter_file.hpp"
